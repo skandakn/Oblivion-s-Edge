@@ -40,6 +40,8 @@ ExportedObj/
 *.pdb.meta
 *.mdb.meta
 sysinfo.txt
+*.log
+*.xml
 
 # Unity cache
 .vs/

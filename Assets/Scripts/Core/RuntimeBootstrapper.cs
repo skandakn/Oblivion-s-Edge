@@ -168,7 +168,7 @@ namespace OblivionsEdge.Core
 
         private static void EnsureCombatTargets()
         {
-            if (Object.FindFirstObjectByType<TargetDrone>() != null) return;
+            if (Object.FindAnyObjectByType<TargetDrone>() != null) return;
 
             GameObject targetsRoot = new GameObject("Target_Drones");
 
@@ -210,7 +210,7 @@ namespace OblivionsEdge.Core
             canvasObj.AddComponent<UnityEngine.UI.GraphicRaycaster>();
 
             // Ensure EventSystem
-            if (Object.FindFirstObjectByType<UnityEngine.EventSystems.EventSystem>() == null)
+            if (Object.FindAnyObjectByType<UnityEngine.EventSystems.EventSystem>() == null)
             {
                 var esObj = new GameObject("EventSystem");
                 esObj.AddComponent<UnityEngine.EventSystems.EventSystem>();

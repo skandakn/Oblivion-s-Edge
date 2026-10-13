@@ -1,10 +1,12 @@
 {
   "name": "oblivions-edge",
   "version": "1.0.0",
-  "description": "OBLIVION'S EDGE — 2D Sci-Fi Survival Horror Web Game",
-  "main": "index.html",
+  "description": "OBLIVION'S EDGE — 2D Sci-Fi Survival Horror Web Game & Local Simulator",
+  "main": "server.js",
   "scripts": {
-    "start": "python -m http.server 8080"
+    "start": "node server.js",
+    "preview": "node server.js",
+    "serve": "python -m http.server 8080"
   },
   "keywords": [
     "game",
@@ -16,6 +18,6 @@
     "webgl",
     "vercel"
   ],
-  "author": "Skanda & Team",
+  "author": "Skanda & Oblivions Edge Team",
   "license": "MIT"
 }
