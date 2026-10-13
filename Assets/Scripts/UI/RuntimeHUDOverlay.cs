@@ -83,7 +83,7 @@ namespace OblivionsEdge.UI
             }
 
             // Top Status Banner
-            GUI.Box(new Rect(10, 10, 320, 115), GUIContent.none, _boxStyle);
+            GUI.Box(new Rect(10, 10, 320, 142), GUIContent.none, _boxStyle);
             GUI.Label(new Rect(20, 15, 300, 20), "OBLIVION'S EDGE // SURVIVOR STATUS", _titleStyle);
 
             // Health Bar
@@ -108,12 +108,25 @@ namespace OblivionsEdge.UI
             string ammoStr = (_gun != null && _gun.IsReloading) ? "RELOADING..." : $"{ammo} / {res} [PULSE PISTOL]";
             GUI.Label(new Rect(20, 80, 290, 20), $"WEAPON: {ammoStr}", _titleStyle);
 
+            // Animal Companion Status
+            var animal = Object.FindAnyObjectByType<AnimalCharacter>();
+            if (animal != null)
+            {
+                float aHp = animal.CurrentHealth;
+                float aMax = animal.MaxHealth;
+                string modeStr = animal.IsDirectlyControlled ? "DIRECT CONTROL [T]" : "COMPANION AI";
+                GUI.Label(new Rect(20, 102, 120, 18), $"CYBER-HOUND: {Mathf.CeilToInt(aHp)} HP", _labelStyle);
+                GUI.DrawTexture(new Rect(150, 106, 160, 10), _bgTex);
+                GUI.DrawTexture(new Rect(150, 106, 160 * Mathf.Clamp01(aHp / aMax), 10), _staminaTex);
+                GUI.Label(new Rect(20, 120, 300, 16), $"MODE: {modeStr}", _labelStyle);
+            }
+
             // Bottom Controls Bar
-            float barW = 620f;
+            float barW = 720f;
             float barX = (Screen.width - barW) * 0.5f;
             GUI.Box(new Rect(barX, Screen.height - 45, barW, 35), GUIContent.none, _boxStyle);
             GUI.Label(new Rect(barX + 15, Screen.height - 40, barW - 30, 25),
-                "[A / D] Move  •  [SPACE] Jump  •  [LEFT CLICK] Shoot  •  [R] Reload  •  [ALT/SHIFT] Dash",
+                "[A / D] Move  •  [SPACE] Jump  •  [CLICK] Shoot  •  [T] Control Animal Companion  •  [SHIFT] Dash",
                 _labelStyle);
         }
     }

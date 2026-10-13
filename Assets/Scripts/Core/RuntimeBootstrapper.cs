@@ -25,6 +25,7 @@ namespace OblivionsEdge.Core
             EnsureCamera();
             EnsureEnvironment();
             GameObject playerObj = EnsurePlayer();
+            EnsureAnimalCompanion(playerObj);
             EnsureCombatTargets();
             EnsureHUD(playerObj);
 
@@ -55,27 +56,40 @@ namespace OblivionsEdge.Core
 
         private static void EnsureEnvironment()
         {
-            if (GameObject.Find("Environment_Floor") != null) return;
+            if (GameObject.Find("Platform_Left") != null) return;
 
-            GameObject envRoot = new GameObject("Environment_Deck");
+            GameObject envRoot = GameObject.Find("Environment_Deck");
+            if (envRoot == null)
+            {
+                envRoot = new GameObject("Environment_Deck");
+            }
 
-            // Main Deck Floor
-            CreatePlatform(envRoot.transform, "Environment_Floor", new Vector2(0f, -3.8f), new Vector2(36f, 1.2f), new Color(0.12f, 0.16f, 0.22f));
+            // Main Deck Floor (ensure present)
+            if (GameObject.Find("Environment_Floor") == null)
+            {
+                CreatePlatform(envRoot.transform, "Environment_Floor", new Vector2(0f, -3.8f), new Vector2(36f, 1.2f), new Color(0.12f, 0.16f, 0.22f));
+            }
 
-            // Left Elevated Platform
-            CreatePlatform(envRoot.transform, "Platform_Left", new Vector2(-7.5f, -1.2f), new Vector2(6f, 0.5f), new Color(0.16f, 0.22f, 0.3f));
+            // Left step rises 0.75 units above the main deck for reliable short jumps.
+            CreatePlatform(envRoot.transform, "Platform_Left", new Vector2(-7.5f, -2.7f), new Vector2(6f, 0.5f), new Color(0.16f, 0.22f, 0.3f));
 
-            // Right Elevated Platform
-            CreatePlatform(envRoot.transform, "Platform_Right", new Vector2(7.5f, -1.2f), new Vector2(6f, 0.5f), new Color(0.16f, 0.22f, 0.3f));
+            // Right step matches the left step's 0.75-unit rise.
+            CreatePlatform(envRoot.transform, "Platform_Right", new Vector2(7.5f, -2.7f), new Vector2(6f, 0.5f), new Color(0.16f, 0.22f, 0.3f));
 
-            // High Center Observation Reactor Platform
-            CreatePlatform(envRoot.transform, "Platform_Reactor", new Vector2(0f, 1.2f), new Vector2(5f, 0.5f), new Color(0.2f, 0.28f, 0.38f));
+            // Reactor step rises 0.9 units above the side platforms.
+            CreatePlatform(envRoot.transform, "Platform_Reactor", new Vector2(0f, -1.8f), new Vector2(5f, 0.5f), new Color(0.2f, 0.28f, 0.38f));
 
             // Left Wall Barrier
-            CreatePlatform(envRoot.transform, "Wall_Left", new Vector2(-18f, 2f), new Vector2(1.2f, 14f), new Color(0.08f, 0.1f, 0.15f));
+            if (GameObject.Find("Wall_Left") == null)
+            {
+                CreatePlatform(envRoot.transform, "Wall_Left", new Vector2(-18f, 2f), new Vector2(1.2f, 14f), new Color(0.08f, 0.1f, 0.15f));
+            }
 
             // Right Wall Barrier
-            CreatePlatform(envRoot.transform, "Wall_Right", new Vector2(18f, 2f), new Vector2(1.2f, 14f), new Color(0.08f, 0.1f, 0.15f));
+            if (GameObject.Find("Wall_Right") == null)
+            {
+                CreatePlatform(envRoot.transform, "Wall_Right", new Vector2(18f, 2f), new Vector2(1.2f, 14f), new Color(0.08f, 0.1f, 0.15f));
+            }
         }
 
         private static void CreatePlatform(Transform parent, string name, Vector2 position, Vector2 size, Color color)
@@ -166,15 +180,54 @@ namespace OblivionsEdge.Core
             return player;
         }
 
+        private static GameObject EnsureAnimalCompanion(GameObject player)
+        {
+            if (Object.FindAnyObjectByType<AnimalCharacter>() != null)
+            {
+                return GameObject.Find("Animal_CyberHound");
+            }
+
+            GameObject animalObj = new GameObject("Animal_CyberHound");
+            animalObj.tag = GameConstants.TagPlayer;
+            animalObj.layer = GameConstants.LayerPlayerIndex;
+            animalObj.transform.position = player != null ? player.transform.position + new Vector3(2.5f, 0f, 0f) : new Vector3(2.5f, -2.5f, 0f);
+
+            var rb = animalObj.AddComponent<Rigidbody2D>();
+            rb.mass = 2.5f;
+            rb.gravityScale = 3f;
+            rb.collisionDetectionMode = CollisionDetectionMode2D.Continuous;
+            rb.constraints = RigidbodyConstraints2D.FreezeRotation;
+
+            var col = animalObj.AddComponent<BoxCollider2D>();
+            col.size = new Vector2(1.8f, 1.1f);
+            col.offset = new Vector2(0f, 0.05f);
+
+            var animal = animalObj.AddComponent<AnimalCharacter>();
+            if (player != null)
+            {
+                animal.TargetPlayer = player.transform;
+            }
+
+            // Visuals Child with cyber animal sprite
+            GameObject visuals = new GameObject("Visuals");
+            visuals.transform.SetParent(animalObj.transform, false);
+            var sr = visuals.AddComponent<SpriteRenderer>();
+            sr.sortingLayerName = "Characters";
+            sr.sortingOrder = 4;
+            sr.sprite = CreateCyberAnimalSprite();
+
+            return animalObj;
+        }
+
         private static void EnsureCombatTargets()
         {
             if (Object.FindAnyObjectByType<TargetDrone>() != null) return;
 
             GameObject targetsRoot = new GameObject("Target_Drones");
 
-            CreateTargetDrone(targetsRoot.transform, "BioDrone_Alpha", new Vector3(7.5f, 0.2f, 0f));
-            CreateTargetDrone(targetsRoot.transform, "BioDrone_Beta", new Vector3(-7.5f, 0.2f, 0f));
-            CreateTargetDrone(targetsRoot.transform, "BioDrone_Central", new Vector3(0f, 2.6f, 0f));
+            CreateTargetDrone(targetsRoot.transform, "BioDrone_Alpha", new Vector3(7.5f, -0.7f, 0f));
+            CreateTargetDrone(targetsRoot.transform, "BioDrone_Beta", new Vector3(-7.5f, -0.7f, 0f));
+            CreateTargetDrone(targetsRoot.transform, "BioDrone_Central", new Vector3(0f, 0.8f, 0f));
         }
 
         private static void CreateTargetDrone(Transform parent, string name, Vector3 position)
@@ -329,6 +382,128 @@ namespace OblivionsEdge.Core
             }
             tex.Apply();
             return tex;
+        }
+
+        private static Sprite CreateCyberAnimalSprite()
+        {
+            int w = 64, h = 48;
+            Texture2D tex = new Texture2D(w, h, TextureFormat.RGBA32, false);
+            tex.filterMode = FilterMode.Point;
+
+            Color cArmorDark = new Color(0.12f, 0.16f, 0.22f, 1f);
+            Color cArmorMid = new Color(0.22f, 0.28f, 0.38f, 1f);
+            Color cArmorLight = new Color(0.35f, 0.45f, 0.59f, 1f);
+            Color cArmorHighlight = new Color(0.63f, 0.73f, 0.86f, 1f);
+            Color cCyan = new Color(0f, 0.96f, 1f, 1f);
+            Color cOrange = new Color(1f, 0.59f, 0.08f, 1f);
+            Color cClaw = new Color(0.06f, 0.07f, 0.09f, 1f);
+
+            for (int y = 0; y < h; y++)
+                for (int x = 0; x < w; x++)
+                    tex.SetPixel(x, y, Color.clear);
+
+            // Torso & Body
+            for (int y = 18; y < 34; y++)
+            {
+                for (int x = 18; x < 48; x++)
+                {
+                    float dx = (x - 33) / 15f;
+                    float dy = (y - 26) / 8f;
+                    if (dx * dx + dy * dy <= 1f)
+                    {
+                        Color c = y <= 21 ? cArmorLight : (y >= 29 ? cArmorDark : cArmorMid);
+                        tex.SetPixel(x, y, c);
+                    }
+                }
+            }
+
+            // Power Reactor Core
+            for (int y = 24; y <= 28; y++)
+                for (int x = 30; x <= 35; x++)
+                    tex.SetPixel(x, y, cArmorDark);
+            for (int y = 25; y <= 27; y++)
+                for (int x = 31; x <= 34; x++)
+                    tex.SetPixel(x, y, cOrange);
+
+            // Neck & Muscular Chest
+            for (int y = 15; y < 28; y++)
+            {
+                for (int x = 42; x < 53; x++)
+                {
+                    float dx = (x - 47) / 6f;
+                    float dy = (y - 21) / 7f;
+                    if (dx * dx + dy * dy <= 1f)
+                    {
+                        tex.SetPixel(x, y, y <= 19 ? cArmorLight : cArmorMid);
+                    }
+                }
+            }
+
+            // Head & Snout
+            for (int y = 10; y < 19; y++)
+                for (int x = 48; x < 57; x++)
+                    if ((x - 52) * (x - 52) + (y - 14) * (y - 14) <= 20)
+                        tex.SetPixel(x, y, cArmorLight);
+
+            // Ears
+            for (int y = 6; y <= 10; y++)
+                for (int x = 48; x <= 50; x++)
+                    tex.SetPixel(x, y, cArmorHighlight);
+
+            // Jaws
+            for (int y = 14; y <= 18; y++)
+                for (int x = 54; x <= 61; x++)
+                    tex.SetPixel(x, y, y <= 16 ? cArmorLight : cArmorMid);
+            for (int y = 18; y <= 20; y++)
+                for (int x = 55; x <= 59; x++)
+                    tex.SetPixel(x, y, cArmorDark);
+
+            // Cyan Optical Visor / Sensor Eyes
+            for (int x = 52; x <= 56; x++)
+            {
+                tex.SetPixel(x, 13, cCyan);
+                tex.SetPixel(x, 14, cCyan);
+            }
+
+            // Cyber Spine Ridge
+            for (int x = 22; x <= 42; x += 4)
+            {
+                tex.SetPixel(x, 18, cArmorHighlight);
+                tex.SetPixel(x + 1, 18, cCyan);
+            }
+
+            // Tail
+            for (int i = 0; i < 14; i++)
+            {
+                int tx = 20 - i;
+                int ty = 23 - (int)(6 * Mathf.Pow(i / 13f, 1.3f));
+                tex.SetPixel(tx, ty, cArmorMid);
+                tex.SetPixel(tx, ty + 1, (i % 3 == 0) ? cCyan : cArmorLight);
+            }
+
+            // Legs & Claws
+            // Back Left Leg
+            for (int y = 24; y <= 33; y++) for (int x = 17; x <= 25; x++) tex.SetPixel(x, y, cArmorMid);
+            for (int y = 33; y <= 41; y++) for (int x = 15; x <= 19; x++) tex.SetPixel(x, y, cArmorDark);
+            for (int y = 41; y <= 44; y++) for (int x = 14; x <= 19; x++) tex.SetPixel(x, y, cClaw);
+
+            // Back Right Leg
+            for (int y = 25; y <= 34; y++) for (int x = 23; x <= 29; x++) tex.SetPixel(x, y, cArmorLight);
+            for (int y = 34; y <= 42; y++) for (int x = 22; x <= 26; x++) tex.SetPixel(x, y, cArmorMid);
+            for (int y = 42; y <= 44; y++) for (int x = 21; x <= 27; x++) tex.SetPixel(x, y, cClaw);
+
+            // Front Left Leg
+            for (int y = 26; y <= 35; y++) for (int x = 41; x <= 46; x++) tex.SetPixel(x, y, cArmorDark);
+            for (int y = 35; y <= 42; y++) for (int x = 42; x <= 45; x++) tex.SetPixel(x, y, cArmorMid);
+            for (int y = 42; y <= 44; y++) for (int x = 41; x <= 46; x++) tex.SetPixel(x, y, cClaw);
+
+            // Front Right Leg
+            for (int y = 25; y <= 34; y++) for (int x = 47; x <= 53; x++) tex.SetPixel(x, y, cArmorLight);
+            for (int y = 34; y <= 42; y++) for (int x = 47; x <= 51; x++) tex.SetPixel(x, y, cArmorMid);
+            for (int y = 42; y <= 44; y++) for (int x = 46; x <= 52; x++) tex.SetPixel(x, y, cClaw);
+
+            tex.Apply();
+            return Sprite.Create(tex, new Rect(0, 0, w, h), new Vector2(0.5f, 0.5f), 24f);
         }
     }
 }

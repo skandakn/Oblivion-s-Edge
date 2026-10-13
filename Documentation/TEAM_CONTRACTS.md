@@ -142,6 +142,15 @@ public interface IPlayerStats : IDamageable
     event Action OnSanityDepleted;
     event Action OnOxygenDepleted;
 }
+
+// Animal Character & Companion Contract (OblivionsEdge.Player.AnimalCharacter)
+// Enlarged quadruped combat beast (scale 1.65x) with IDamageable, autonomous AI, and manual possession [T].
+public interface IAnimalCharacter : IDamageable
+{
+    string CharacterName { get; }
+    bool IsDirectlyControlled { get; }
+    Transform TargetPlayer { get; set; }
+}
 ```
 
 ---
