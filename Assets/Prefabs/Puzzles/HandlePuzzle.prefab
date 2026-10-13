@@ -10,6 +10,7 @@ GameObject:
   m_Component:
   - component: {fileID: 1001}
   - component: {fileID: 1002}
+  - component: {fileID: 1003}
   m_Layer: 9
   m_Name: HandlePuzzle
   m_TagString: Interactable
@@ -48,7 +49,12 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   _puzzleId: handle-alignment
-  _interactionPromptText: Align the three handle rings (Q/E rotate, 1-3 select, R reset)
+  _unlockedArtifactId: deathstorm_handle
+  _cipherKeyDescription: 'Relay Ship Log Cipher: Outer Ring -> 0° (North), Middle
+    Ring -> 90° (East), Inner Ring -> 180° (South)'
+  _interactionPromptText: Align the three handle rings (Q/E rotate, 1-3 select, R
+    reset)
+  _solvedPromptText: Handle relay aligned — deathstorm_handle unlocked
   _rings:
   - {fileID: 1101}
   - {fileID: 1201}
@@ -57,14 +63,18 @@ MonoBehaviour:
   _targetSteps: 000000000100000002000000
   _initialSteps: 000000000000000000000000
   _selectedRing: 0
-  _acceptKeyboardInput: 1
-  _rotateCounterClockwiseKey: 113
-  _rotateClockwiseKey: 101
-  _resetKey: 114
+  _smoothTransitions: 1
+  _rotationSpeed: 360
   _ringRenderers: [null, null, null]
   _correctColor: {r: 0.2, g: 1, b: 0.65, a: 1}
   _incorrectColor: {r: 1, g: 0.35, b: 0.2, a: 1}
   _solvedColor: {r: 0.25, g: 0.8, b: 1, a: 1}
+  _autoPersistState: 0
+  _persistenceKey: OblivionsEdge_HandlePuzzle_State
+  _acceptKeyboardInput: 1
+  _rotateCounterClockwiseKey: 113
+  _rotateClockwiseKey: 101
+  _resetKey: 114
   _onCorrectAlignment:
     m_PersistentCalls:
       m_Calls: []
@@ -74,6 +84,33 @@ MonoBehaviour:
   _onHandleUnlocked:
     m_PersistentCalls:
       m_Calls: []
+  _onPuzzleCompleted:
+    m_PersistentCalls:
+      m_Calls: []
+  _onPuzzleReset:
+    m_PersistentCalls:
+      m_Calls: []
+--- !u!58 &1003
+CircleCollider2D:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1000}
+  m_Enabled: 1
+  m_Density: 1
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_IsTrigger: 1
+  m_UsedByEffector: 0
+  m_UsedByComposite: 0
+  m_Offset: {x: 0, y: 0}
+  m_Radius: 1.5
 --- !u!1 &1100
 GameObject:
   m_ObjectHideFlags: 0
