@@ -525,6 +525,8 @@
       scrap: 45,
       camera: { x: 0, y: 0 },
       shake: 0,
+      isGameOver: false,
+      respawnInvulnerabilityFrames: 0,
       player: {
         x: 160,
         y: 440,
@@ -616,6 +618,8 @@
     // --- LEVEL DEFINITIONS ---
     function initLevel(lvlNum) {
       state.currentLevel = lvlNum;
+      state.isGameOver = false;
+      state.respawnInvulnerabilityFrames = 0;
       state.bullets = [];
       state.particles = [];
       state.pickups = [];
@@ -1084,6 +1088,7 @@
     const mouse = { x: width / 2, y: height / 2, down: false };
 
     window.addEventListener('keydown', e => {
+      if (state.isGameOver) return;
       initAudio();
       const k = e.key.toLowerCase();
       keys[k] = true;
@@ -1104,6 +1109,7 @@
     window.addEventListener('keyup', e => { keys[e.key.toLowerCase()] = false; });
     window.addEventListener('mousemove', e => { mouse.x = e.clientX; mouse.y = e.clientY; });
     window.addEventListener('mousedown', e => {
+      if (state.isGameOver) return;
       initAudio();
       if (e.button === 0) mouse.down = true;
     });
@@ -1111,6 +1117,7 @@
 
     // --- GAME CLOCK ---
     setInterval(() => {
+      if (state.isGameOver) return;
       state.secondsElapsed++;
       const m = String(Math.floor(state.secondsElapsed / 60)).padStart(2, '0');
       const s = String(state.secondsElapsed % 60).padStart(2, '0');
@@ -1549,19 +1556,37 @@
     }
 
     function respawnPlayer() {
+      const p = state.player;
+      state.isGameOver = false;
       document.getElementById('modalGameOver').classList.add('hidden');
-      state.player.hp = state.player.maxHp;
-      state.player.shield = state.player.maxShield;
-      state.player.x = 120;
-      state.player.y = 440;
-      state.player.vx = 0;
-      state.player.vy = 0;
+      p.hp = p.maxHp;
+      p.shield = p.maxShield;
+      p.x = 120;
+      p.y = 440;
+      p.vx = 0;
+      p.vy = 0;
+      p.isGrounded = false;
+      p.isDashing = false;
+      p.dashTimer = 0;
+      p.afterimages = [];
+      state.bullets = [];
+      state.shake = 0;
+      state.respawnInvulnerabilityFrames = 120;
+      state.camera.x = p.x + p.width / 2 - width / 2;
+      state.camera.y = p.y + p.height / 2 - height / 2;
+      for (const key in keys) keys[key] = false;
+      mouse.down = false;
       updateVitalsUI();
+      showNotification("REBOOT COMPLETE — TEMPORARY SHIELD ACTIVE");
     }
 
     // --- MAIN PHYSICS & SIMULATION ---
     function updatePhysics() {
       const p = state.player;
+
+      if (state.respawnInvulnerabilityFrames > 0) {
+        state.respawnInvulnerabilityFrames--;
+      }
 
       // Screen shake decay
       if (state.shake > 0) state.shake *= 0.9;
@@ -1874,7 +1899,7 @@
 
     function damagePlayer(amount) {
       const p = state.player;
-      if (p.isDashing) return;
+      if (state.isGameOver || state.respawnInvulnerabilityFrames > 0 || p.isDashing) return;
 
       if (p.shield > 0) {
         p.shield -= amount;
@@ -1891,6 +1916,9 @@
       updateVitalsUI();
 
       if (p.hp <= 0) {
+        state.isGameOver = true;
+        mouse.down = false;
+        for (const key in keys) keys[key] = false;
         document.getElementById('modalGameOver').classList.remove('hidden');
       }
     }
@@ -2213,7 +2241,7 @@
 
     // --- MAIN ANIMATION LOOP ---
     function loop() {
-      updatePhysics();
+      if (!state.isGameOver) updatePhysics();
       render();
       requestAnimationFrame(loop);
     }
