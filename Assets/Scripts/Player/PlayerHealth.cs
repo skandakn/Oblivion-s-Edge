@@ -24,6 +24,9 @@ namespace OblivionsEdge.Player
         [Tooltip("Initial health when spawned.")]
         [SerializeField] [Range(10f, 500f)] private float _startingHealth = 100f;
 
+        [Tooltip("Fraction of incoming damage prevented before health is reduced. 0 means no mitigation; 1 prevents all damage.")]
+        [SerializeField] [Range(0f, 1f)] private float _damageMitigation;
+
         [Header("Invulnerability (i-Frames)")]
         [Tooltip("Duration of temporary invulnerability triggered after taking damage.")]
         [SerializeField] [Range(0.1f, 3f)] private float _invulnerabilityDuration = 1.0f;
@@ -84,6 +87,7 @@ namespace OblivionsEdge.Player
         public bool IsInvulnerable => _isInvulnerable;
         public float InvulnerabilityDuration => _invulnerabilityDuration;
         public float InvulnerabilityTimerRemaining => Mathf.Max(0f, _invulnerabilityTimer);
+        public float DamageMitigation => _damageMitigation;
 
         #endregion
 
@@ -161,7 +165,8 @@ namespace OblivionsEdge.Player
                 return;
             }
 
-            _currentHealth = Mathf.Max(0f, _currentHealth - damageInfo.Amount);
+            float appliedDamage = damageInfo.Amount * (1f - _damageMitigation);
+            _currentHealth = Mathf.Max(0f, _currentHealth - appliedDamage);
 
             // Apply directional knockback impulse if present
             if (damageInfo.KnockbackForce > 0f && _rb != null)
