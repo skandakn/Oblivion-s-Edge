@@ -304,11 +304,11 @@ namespace OblivionsEdge.Player
             {
                 // Smoothly decelerate to zero horizontal velocity when disabled
                 _currentHorizontalVelocity = Mathf.MoveTowards(
-                    _rb.velocity.x,
+                    _rb.linearVelocity.x,
                     0f,
                     _groundDeceleration * Time.fixedDeltaTime
                 );
-                _rb.velocity = new Vector2(_currentHorizontalVelocity, _rb.velocity.y);
+                _rb.linearVelocity = new Vector2(_currentHorizontalVelocity, _rb.linearVelocity.y);
             }
         }
 
@@ -498,16 +498,16 @@ namespace OblivionsEdge.Player
                 : (Mathf.Abs(targetVelocityX) > 0.01f ? _airAcceleration : _airDeceleration);
 
             _currentHorizontalVelocity = Mathf.MoveTowards(
-                _rb.velocity.x,
+                _rb.linearVelocity.x,
                 targetVelocityX,
                 accel * Time.fixedDeltaTime
             );
 
-            _rb.velocity = new Vector2(_currentHorizontalVelocity, _rb.velocity.y);
+            _rb.linearVelocity = new Vector2(_currentHorizontalVelocity, _rb.linearVelocity.y);
 
             if (Mathf.Abs(_currentHorizontalVelocity) > 0.05f)
             {
-                OnMoved?.Invoke(_rb.velocity);
+                OnMoved?.Invoke(_rb.linearVelocity);
             }
         }
 
@@ -522,21 +522,21 @@ namespace OblivionsEdge.Player
             }
 
             // Snappy jump arc modifications
-            if (_rb.velocity.y < 0f)
+            if (_rb.linearVelocity.y < 0f)
             {
                 // Falling faster
-                _rb.velocity += Vector2.up * (Physics2D.gravity.y * (_fallGravityMultiplier - 1f) * Time.fixedDeltaTime);
+                _rb.linearVelocity += Vector2.up * (Physics2D.gravity.y * (_fallGravityMultiplier - 1f) * Time.fixedDeltaTime);
             }
-            else if (_rb.velocity.y > 0f && !Input.GetKey(_jumpKey))
+            else if (_rb.linearVelocity.y > 0f && !Input.GetKey(_jumpKey))
             {
                 // Variable jump height cut when release early
-                _rb.velocity += Vector2.up * (Physics2D.gravity.y * (_lowJumpGravityMultiplier - 1f) * Time.fixedDeltaTime);
+                _rb.linearVelocity += Vector2.up * (Physics2D.gravity.y * (_lowJumpGravityMultiplier - 1f) * Time.fixedDeltaTime);
             }
         }
 
         private void ExecuteJump()
         {
-            _rb.velocity = new Vector2(_rb.velocity.x, _jumpForce);
+            _rb.linearVelocity = new Vector2(_rb.linearVelocity.x, _jumpForce);
             _jumpBufferTimer = 0f;
             _coyoteTimer = 0f;
 
@@ -603,14 +603,14 @@ namespace OblivionsEdge.Player
         private void ExecuteDashStep()
         {
             float speed = _dashDistance / _dashDuration;
-            _rb.velocity = _dashDirection * speed;
+            _rb.linearVelocity = _dashDirection * speed;
         }
 
         private void EndDash()
         {
             _isDashing = false;
             _rb.gravityScale = _initialGravityScale;
-            _rb.velocity = new Vector2(_rb.velocity.x * 0.5f, 0f);
+            _rb.linearVelocity = new Vector2(_rb.linearVelocity.x * 0.5f, 0f);
 
             if (_dashTrail != null)
             {
@@ -775,7 +775,7 @@ namespace OblivionsEdge.Player
             if (_animator == null) return;
 
             SafeSetFloat(AnimHashSpeed, Mathf.Abs(_currentHorizontalVelocity));
-            SafeSetFloat(AnimHashVerticalVelocity, _rb.velocity.y);
+            SafeSetFloat(AnimHashVerticalVelocity, _rb.linearVelocity.y);
             SafeSetBool(AnimHashIsGrounded, _isGrounded);
             SafeSetBool(AnimHashIsMoving, IsMoving);
         }

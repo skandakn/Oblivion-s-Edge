@@ -173,7 +173,7 @@ namespace OblivionsEdge.Player
                         ? Vector2.right
                         : Vector2.left;
                 }
-                _rb.velocity = new Vector2(0f, _rb.velocity.y);
+                _rb.linearVelocity = new Vector2(0f, _rb.linearVelocity.y);
                 _rb.AddForce(knockbackDir.normalized * damageInfo.KnockbackForce, ForceMode2D.Impulse);
             }
 
