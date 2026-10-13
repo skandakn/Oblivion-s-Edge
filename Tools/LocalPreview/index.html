@@ -1152,12 +1152,12 @@
     const laserPuzzle = {
       solved: false,
       mirrors: [
-        { x: 120, y: 70, angle: 45 },
-        { x: 340, y: 70, angle: 135 },
-        { x: 340, y: 190, angle: 225 },
-        { x: 220, y: 190, angle: 315 }
+        { x: 120, y: 70, angle: 0 },
+        { x: 340, y: 70, angle: 90 },
+        { x: 340, y: 190, angle: 180 },
+        { x: 220, y: 190, angle: 270 }
       ],
-      targetX: 220, targetY: 100
+      targetX: 220, targetY: 100, beamProgress: 0, animationFrame: null
     };
 
     function renderLaserPuzzle() {
@@ -1197,35 +1197,34 @@
         c.fill();
       });
 
-      c.strokeStyle = '#22d3ee';
-      c.lineWidth = 2;
-      c.beginPath();
-      c.moveTo(54, 70);
-      c.lineTo(laserPuzzle.mirrors[0].x, laserPuzzle.mirrors[0].y);
-
-      let isConnected = true;
+      const solution = [45, 135, 225, 315];
+      const route = [{ x: 54, y: 70 }];
       for (let i = 0; i < laserPuzzle.mirrors.length; i++) {
-        if (laserPuzzle.mirrors[i].angle % 360 !== [45, 135, 225, 315][i]) {
-          isConnected = false;
-        }
+        const m = laserPuzzle.mirrors[i];
+        if (m.angle % 360 !== solution[i]) break;
+        route.push({ x: m.x, y: m.y });
       }
-
-      if (isConnected) {
-        c.lineTo(laserPuzzle.mirrors[1].x, laserPuzzle.mirrors[1].y);
-        c.lineTo(laserPuzzle.mirrors[2].x, laserPuzzle.mirrors[2].y);
-        c.lineTo(laserPuzzle.mirrors[3].x, laserPuzzle.mirrors[3].y);
-        c.lineTo(laserPuzzle.targetX, laserPuzzle.targetY);
-        c.stroke();
-
-        if (!laserPuzzle.solved) {
-          laserPuzzle.solved = true;
-          document.getElementById('laserStatus').textContent = 'CIRCUIT COMPLETE // RECEPTOR CHARGED';
-          document.getElementById('laserStatus').className = 'text-emerald-400 font-bold';
-          document.getElementById('btnClaimEdge').removeAttribute('disabled');
-          sfxPuzzle();
-        }
-      } else {
-        c.stroke();
+      const isConnected = route.length === laserPuzzle.mirrors.length + 1;
+      if (isConnected) route.push({ x: laserPuzzle.targetX, y: laserPuzzle.targetY });
+      const routeLength = route.slice(1).reduce((sum, p, i) => sum + Math.hypot(p.x - route[i].x, p.y - route[i].y), 0);
+      let remaining = Math.min(laserPuzzle.beamProgress, routeLength);
+      c.strokeStyle = '#22d3ee'; c.lineWidth = 2; c.beginPath(); c.moveTo(route[0].x, route[0].y);
+      for (let i = 1; i < route.length; i++) {
+        const from = route[i - 1], to = route[i], length = Math.hypot(to.x - from.x, to.y - from.y);
+        if (remaining >= length) { c.lineTo(to.x, to.y); remaining -= length; }
+        else { const f = length ? remaining / length : 0; c.lineTo(from.x + (to.x - from.x) * f, from.y + (to.y - from.y) * f); break; }
+      }
+      c.stroke();
+      if (laserPuzzle.beamProgress < routeLength) {
+        laserPuzzle.beamProgress = Math.min(routeLength, laserPuzzle.beamProgress + 3);
+        if (laserPuzzle.animationFrame === null) laserPuzzle.animationFrame = requestAnimationFrame(() => { laserPuzzle.animationFrame = null; renderLaserPuzzle(); });
+      }
+      if (isConnected && laserPuzzle.beamProgress >= routeLength && !laserPuzzle.solved) {
+        laserPuzzle.solved = true;
+        document.getElementById('laserStatus').textContent = 'CIRCUIT COMPLETE // RECEPTOR CHARGED';
+        document.getElementById('laserStatus').className = 'text-emerald-400 font-bold';
+        document.getElementById('btnClaimEdge').removeAttribute('disabled');
+        sfxPuzzle();
       }
     }
 
@@ -1237,6 +1236,7 @@
       laserPuzzle.mirrors.forEach(m => {
         if (Math.hypot(m.x - clickX, m.y - clickY) < 25) {
           m.angle = (m.angle + 45) % 360;
+          laserPuzzle.beamProgress = 0;
           playTone(520, 'sine', 0.08, 0.08);
           renderLaserPuzzle();
         }
