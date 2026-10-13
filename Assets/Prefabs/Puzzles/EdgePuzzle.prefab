@@ -740,7 +740,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ac00bd4924bf426e8e978a4d122fbc29, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  _itemId: item_edge_component
+  _itemId: deathstorm_edge
   _displayName: Edge Component Matrix
   _promptText: Extract Edge Component
   _relicRenderer: {fileID: 660003}

@@ -50,6 +50,9 @@ namespace OblivionsEdge.Puzzles
         [Tooltip("Can the player interact and rotate when the puzzle has already been solved?")]
         [SerializeField] private bool _canRotateWhenSolved = false;
 
+        [Tooltip("Allows direct left-click rotation in addition to the player's E-key interaction controller.")]
+        [SerializeField] private bool _allowMouseClick = true;
+
         [Header("Visual Feedback & Hierarchy")]
         [Tooltip("Transform that rotates to represent the mirror physically. If null, rotates this transform.")]
         [SerializeField] private Transform _rotatingPivot;
@@ -176,6 +179,14 @@ namespace OblivionsEdge.Puzzles
 
             _wasReflectingLastFrame = _isReflectingBeamThisFrame;
             _isReflectingBeamThisFrame = false; // reset for next frame raycast evaluation
+        }
+
+        private void OnMouseDown()
+        {
+            if (_allowMouseClick)
+            {
+                Interact(null);
+            }
         }
 
         #endregion
