@@ -605,9 +605,9 @@
     companionDrone: { active:false, x:160, y:400, lastShot:0 },
     jumpPads: [],
     weapons: [
-      { name:"PULSE PISTOL [MK-I]", clip:12, maxClip:12, reserve:60, fireRate:160, lastFired:0, damage:18, speed:18, color:'#38bdf8' },
-      { name:"PLASMA SCATTERGUN",   clip:6,  maxClip:6,  reserve:36, fireRate:600, lastFired:0, damage:13, speed:14, count:5, spread:0.28, color:'#f59e0b' },
-      { name:"VOID RAILGUN",        clip:4,  maxClip:4,  reserve:16, fireRate:900, lastFired:0, damage:95, speed:28, piercing:true, color:'#a855f7' },
+      { name:"PULSE PISTOL [MK-I]", clip:12, maxClip:12, reserve:60, maxReserve:80, fireRate:160, lastFired:0, damage:18, speed:18, color:'#38bdf8' },
+      { name:"PLASMA SCATTERGUN",   clip:6,  maxClip:6,  reserve:36, maxReserve:48, fireRate:600, lastFired:0, damage:13, speed:14, count:5, spread:0.28, color:'#f59e0b' },
+      { name:"VOID RAILGUN",        clip:4,  maxClip:4,  reserve:16, maxReserve:24, fireRate:900, lastFired:0, damage:95, speed:28, piercing:true, color:'#a855f7' },
       { name:"DEATHSTORM VOID AXE", clip:1,  maxClip:1,  reserve:999,fireRate:400, lastFired:0, damage:450, melee:true, color:'#ec4899' }
     ],
     curWeapIdx: 0,
@@ -624,7 +624,10 @@
       { id:"combat_drone", name:"Tactical Companion Drone",       desc:"Auto-targeting combat drone deploys",   price:300, bought:false, type:"tactical"   },
       { id:"emp_pack",     name:"EMP Shockwave Charge",           desc:"+1 EMP Charge (Q to freeze enemies)",   price:90,  repeatable:true, type:"tactical"},
       { id:"med_syringe",  name:"Nanite Med-Syringe",             desc:"Instantly restores +60 Suit Integrity", price:50,  repeatable:true, type:"consumable"},
-      { id:"ammo_crate",   name:"Full Munitions Supply",          desc:"Refills all weapon reserves to max",    price:40,  repeatable:true, type:"consumable"}
+      { id:"pistol_ammo",  name:"Pulse Pistol Ammo Pack",          desc:"Adds up to 24 reserve rounds (max 80)",price:18,  repeatable:true, type:"consumable"},
+      { id:"scatter_ammo", name:"Scattergun Ammo Pack",            desc:"Adds 12 reserve shells (max 48)",      price:25,  repeatable:true, type:"consumable"},
+      { id:"rail_ammo",    name:"Railgun Ammo Pack",               desc:"Adds 8 reserve rounds (max 24)",       price:30,  repeatable:true, type:"consumable"},
+      { id:"ammo_crate",   name:"Full Munitions Supply",           desc:"Refills all weapon reserves to max",   price:40,  repeatable:true, type:"consumable"}
     ],
     buildings:[], platforms:[], interactables:[], pickups:[], crates:[], drones:[], bullets:[], particles:[],
     boss:{ x:3400,y:430,vx:0,vy:0,w:90,h:90,armor:500,maxArmor:500,hp:800,maxHp:800,phase:1,staggerTimer:0,attackTimer:0,active:false,defeated:false },
@@ -962,6 +965,11 @@
     const colors = { weapon:'amber', suit:'cyan', tactical:'purple', consumable:'emerald' };
     state.shopCatalog.forEach((item,i)=>{
       const canAfford = state.credits >= item.price;
+      const ammoIndex = { pistol_ammo:0, scatter_ammo:1, rail_ammo:2 }[item.id];
+      const ammoRoom = item.id==='ammo_crate'
+        ? state.weapons.slice(0,3).some(w=>w.reserve<w.maxReserve)
+        : ammoIndex===undefined || state.weapons[ammoIndex].reserve<state.weapons[ammoIndex].maxReserve;
+      const canBuy = canAfford && ammoRoom;
       const isBought = item.bought && !item.repeatable;
       const cl = colors[item.type];
       const div = document.createElement('div');
@@ -976,7 +984,7 @@
         </div>
         <div class="flex items-center gap-3">
           <span class="text-[10px] font-mono font-bold ${canAfford?'text-amber-400':'text-slate-500'}">${item.price} NC</span>
-          <button onclick="buyShopItem(${i})" ${isBought||!canAfford?'disabled':''} class="btn-hud px-3 py-1.5 rounded-xl text-[9px] ${isBought?'border-slate-700 text-slate-500 cursor-not-allowed':(canAfford?'border-cyan-500 text-cyan-200 bg-cyan-950/40 hover:bg-cyan-950/70':'border-slate-700 text-slate-500 cursor-not-allowed')}">${isBought?'OWNED':'BUY'}</button>
+          <button onclick="buyShopItem(${i})" ${isBought||!canBuy?'disabled':''} class="btn-hud px-3 py-1.5 rounded-xl text-[9px] ${isBought||!canBuy?'border-slate-700 text-slate-500 cursor-not-allowed':'border-cyan-500 text-cyan-200 bg-cyan-950/40 hover:bg-cyan-950/70'}">${isBought?'OWNED':(!ammoRoom?'FULL':'BUY')}</button>
         </div>`;
       c.appendChild(div);
     });
@@ -985,6 +993,9 @@
   function buyShopItem(idx) {
     const item = state.shopCatalog[idx];
     if (state.credits < item.price || (item.bought && !item.repeatable)) return;
+    const ammoIndex = { pistol_ammo:0, scatter_ammo:1, rail_ammo:2 }[item.id];
+    if (ammoIndex!==undefined && state.weapons[ammoIndex].reserve>=state.weapons[ammoIndex].maxReserve) { renderShopItems(); return; }
+    if (item.id==='ammo_crate' && !state.weapons.slice(0,3).some(w=>w.reserve<w.maxReserve)) { renderShopItems(); return; }
     state.credits -= item.price;
     document.getElementById('currencyCredits').textContent = `${state.credits} NC`;
     document.getElementById('shopBalance').textContent = `${state.credits}`;
@@ -1000,7 +1011,10 @@
       case 'combat_drone': item.bought=true; state.companionDrone.active=true; showNotification("🤖 COMBAT DRONE DEPLOYED!"); break;
       case 'emp_pack':     state.player.empCharges++; document.getElementById('empCount').textContent=state.player.empCharges; showNotification(`⚡ EMP CHARGE ADDED (Total: ${state.player.empCharges})`); break;
       case 'med_syringe':  state.player.hp=Math.min(state.player.maxHp,state.player.hp+60); updateVitalsUI(); showNotification("💉 MED-SYRINGE: +60 Integrity restored!"); break;
-      case 'ammo_crate':   state.weapons[0].reserve=80; state.weapons[1].reserve=48; state.weapons[2].reserve=24; updateArsenalUI(); showNotification("📦 AMMO RESTOCKED TO MAX!"); break;
+      case 'pistol_ammo': state.weapons[0].reserve=Math.min(state.weapons[0].maxReserve,state.weapons[0].reserve+24); updateArsenalUI(); showNotification("🔹 PISTOL AMMO +24!"); break;
+      case 'scatter_ammo': state.weapons[1].reserve=Math.min(state.weapons[1].maxReserve,state.weapons[1].reserve+12); updateArsenalUI(); showNotification("🟠 SCATTERGUN AMMO +12!"); break;
+      case 'rail_ammo': state.weapons[2].reserve=Math.min(state.weapons[2].maxReserve,state.weapons[2].reserve+8); updateArsenalUI(); showNotification("🟣 RAILGUN AMMO +8!"); break;
+      case 'ammo_crate':   state.weapons.slice(0,3).forEach(w=>w.reserve=w.maxReserve); updateArsenalUI(); showNotification("📦 AMMO RESTOCKED TO MAX!"); break;
     }
     renderShopItems();
   }
