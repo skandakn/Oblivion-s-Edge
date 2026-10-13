@@ -527,6 +527,7 @@
       shake: 0,
       isGameOver: false,
       respawnInvulnerabilityFrames: 0,
+      respawnCheckpoint: { x: 120, y: 440 },
       player: {
         x: 160,
         y: 440,
@@ -620,6 +621,7 @@
       state.currentLevel = lvlNum;
       state.isGameOver = false;
       state.respawnInvulnerabilityFrames = 0;
+      state.respawnCheckpoint = { x: 120, y: 440 };
       state.bullets = [];
       state.particles = [];
       state.pickups = [];
@@ -1557,12 +1559,13 @@
 
     function respawnPlayer() {
       const p = state.player;
+      const checkpoint = state.respawnCheckpoint;
       state.isGameOver = false;
       document.getElementById('modalGameOver').classList.add('hidden');
       p.hp = p.maxHp;
       p.shield = p.maxShield;
-      p.x = 120;
-      p.y = 440;
+      p.x = checkpoint.x;
+      p.y = checkpoint.y;
       p.vx = 0;
       p.vy = 0;
       p.isGrounded = false;
@@ -1576,6 +1579,31 @@
       state.camera.y = p.y + p.height / 2 - height / 2;
       for (const key in keys) keys[key] = false;
       mouse.down = false;
+
+      // Reset an unfinished Sector 3 encounter so the Archon cannot chase the player
+      // all the way back to the checkpoint after repeated deaths.
+      if (state.currentLevel === 3 && !state.boss.defeated) {
+        const boss = state.boss;
+        boss.x = 1900;
+        boss.y = 440;
+        boss.vx = 0;
+        boss.vy = 0;
+        boss.armor = boss.maxArmor;
+        boss.hp = boss.maxHp;
+        boss.phase = state.craftingActive && state.craftingCountdown <= 0 ? 4 : 1;
+        boss.staggerTimer = 0;
+        boss.attackTimer = 0;
+        boss.active = false;
+
+        const bossHud = document.getElementById('bossHud');
+        bossHud.style.opacity = '0';
+        bossHud.classList.add('-translate-y-4');
+        document.getElementById('bossArmorBar').style.width = '100%';
+        document.getElementById('bossHpBar').style.width = '100%';
+        document.getElementById('bossHpText').textContent = '100%';
+        document.getElementById('bossPhaseBadge').textContent = boss.phase === 4 ? 'VOID ENRAGED' : 'PHASE 1';
+      }
+
       updateVitalsUI();
       showNotification("REBOOT COMPLETE — TEMPORARY SHIELD ACTIVE");
     }
@@ -1852,6 +1880,7 @@
 
       // Boss activation in Level 3
       if (state.currentLevel === 3 && p.x > 1500 && !state.boss.active && !state.boss.defeated) {
+        state.respawnCheckpoint = { x: 1400, y: 440 };
         state.boss.active = true;
         document.getElementById('bossHud').style.opacity = '1';
         document.getElementById('bossHud').classList.remove('-translate-y-4');
