@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>OBLIVION'S EDGE — 2D Sci-Fi Survival Horror (Hackathon Edition)</title>
-  <meta name="description" content="A complete 2D Sci-Fi Survival Horror game with modular facilities, 3 distinct levels, dynamic currency and reward system, interactive shop, companion drone, and Archon boss battle.">
+  <title>OBLIVION'S EDGE — 2D Sci-Fi Survival Horror</title>
+  <meta name="description" content="A complete 2D Sci-Fi Survival Horror game with modular facilities, 3 distinct levels, dynamic currency and reward system, interactive shop, voice-narrated visual storyline, and Archon Prime boss battle.">
   <meta name="theme-color" content="#060911">
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
@@ -36,16 +36,22 @@
     .glow-gold { text-shadow: 0 0 10px rgba(245, 158, 11, 0.8), 0 0 20px rgba(245, 158, 11, 0.4); }
     .glow-purple { text-shadow: 0 0 12px rgba(168, 85, 247, 0.9), 0 0 24px rgba(168, 85, 247, 0.5); }
     .glow-red { text-shadow: 0 0 12px rgba(239, 68, 68, 0.9), 0 0 24px rgba(239, 68, 68, 0.5); }
-    .glow-green { text-shadow: 0 0 10px rgba(34, 197, 94, 0.8), 0 0 20px rgba(34, 197, 94, 0.4); }
     @keyframes pulse-slow {
       0%, 100% { opacity: 1; transform: scale(1); }
       50% { opacity: 0.75; transform: scale(0.98); }
     }
     .pulse-alarm { animation: pulse-slow 1.2s infinite; }
+    @keyframes eq-wave {
+      0%, 100% { height: 4px; }
+      50% { height: 18px; }
+    }
+    .eq-bar-1 { animation: eq-wave 0.5s infinite ease-in-out; }
+    .eq-bar-2 { animation: eq-wave 0.4s infinite ease-in-out 0.1s; }
+    .eq-bar-3 { animation: eq-wave 0.6s infinite ease-in-out 0.2s; }
+    .eq-bar-4 { animation: eq-wave 0.35s infinite ease-in-out 0.15s; }
     ::-webkit-scrollbar { width: 5px; }
     ::-webkit-scrollbar-track { background: #0b111e; }
     ::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 4px; }
-    ::-webkit-scrollbar-thumb:hover { background: #334155; }
   </style>
 </head>
 <body class="w-full h-full relative overflow-hidden select-none bg-slate-950 text-slate-100">
@@ -111,7 +117,6 @@
       <button onclick="activateEmp()" id="empBtn" class="bg-slate-900/90 hover:bg-slate-800 border border-purple-500/60 text-purple-300 font-mono font-bold text-xs px-3 py-1.5 rounded-xl shadow-lg backdrop-blur flex items-center gap-1.5 transition">
         <span>⚡</span> <span>EMP [Q] (<span id="empCount">1</span>)</span>
       </button>
-      <!-- Hackathon Judge Quick Test Grant (+500 NC) -->
       <button onclick="addCheatCredits()" title="Judges: Click or press K to test all shop upgrades immediately!" class="bg-amber-950/70 hover:bg-amber-900 border border-amber-600/70 text-amber-300 font-mono text-[11px] px-2.5 py-1.5 rounded-xl shadow transition">
         +500 NC [K]
       </button>
@@ -119,9 +124,13 @@
   </div>
 
   <!-- ========================================== -->
-  <!-- TOP-RIGHT HUD: AUDIO & MAP QUICK GUIDE     -->
+  <!-- TOP-RIGHT HUD: STORYLINE, AUDIO & GUIDE    -->
   <!-- ========================================== -->
   <div class="absolute top-4 right-4 z-20 flex items-center gap-2">
+    <!-- Storyline Button with Lore Icon -->
+    <button onclick="toggleStorylineModal()" class="bg-gradient-to-r from-purple-900/90 to-indigo-900/90 hover:from-purple-800 hover:to-indigo-800 border border-purple-500/80 text-purple-200 px-3 py-2 rounded-xl text-xs font-mono shadow-xl backdrop-blur flex items-center gap-1.5 transition animate-pulse">
+      <span>📖</span> <span class="font-bold">STORYLINE [H]</span>
+    </button>
     <button id="audioToggleBtn" onclick="toggleAudio()" class="bg-slate-900/85 hover:bg-slate-800 border border-slate-700/80 text-cyan-400 px-3 py-2 rounded-xl text-xs font-mono shadow-xl backdrop-blur flex items-center gap-1.5 transition">
       <span id="audioIcon">🔊</span> <span id="audioText">SFX ON</span>
     </button>
@@ -175,7 +184,6 @@
         <span class="text-xs font-bold tracking-wider text-slate-300">SURVIVOR VITALS</span>
         <span id="clockDisplay" class="text-[11px] font-mono text-cyan-400">00:00</span>
       </div>
-      <!-- Health -->
       <div>
         <div class="flex justify-between text-[11px] text-slate-400 mb-0.5 font-medium">
           <span>HULL INTEGRITY</span>
@@ -185,17 +193,15 @@
           <div id="hpBar" class="hud-bar h-full bg-emerald-500" style="width: 100%;"></div>
         </div>
       </div>
-      <!-- Dash Booster -->
       <div>
         <div class="flex justify-between text-[11px] text-slate-400 mb-0.5 font-medium">
-          <span>DASH BOOSTER</span>
-          <span id="staminaNum" class="font-mono text-amber-400">READY</span>
+          <span>DASH & DOUBLE-JUMP</span>
+          <span id="staminaNum" class="font-mono text-amber-400">2x READY</span>
         </div>
         <div class="w-full h-2 bg-slate-950 rounded-full overflow-hidden border border-slate-800">
           <div id="staminaBar" class="hud-bar h-full bg-amber-500" style="width: 100%;"></div>
         </div>
       </div>
-      <!-- Shield -->
       <div>
         <div class="flex justify-between text-[11px] text-slate-400 mb-0.5 font-medium">
           <span>PLASMA SHIELD</span>
@@ -238,6 +244,105 @@
   </div>
 
   <!-- ========================================== -->
+  <!-- MODAL: CINEMATIC STORYLINE & VOICE NARRATOR -->
+  <!-- ========================================== -->
+  <div id="modalStoryline" class="absolute inset-0 bg-black/90 backdrop-blur-lg flex items-center justify-center z-50 hidden">
+    <div class="bg-slate-900 border-2 border-purple-500/80 rounded-3xl p-6 w-[52rem] max-h-[90vh] flex flex-col shadow-2xl text-slate-200 relative overflow-hidden">
+      <!-- Glow ambient background -->
+      <div class="absolute -top-32 -left-32 w-80 h-80 bg-purple-600/20 rounded-full blur-3xl pointer-events-none"></div>
+      <div class="absolute -bottom-32 -right-32 w-80 h-80 bg-cyan-600/20 rounded-full blur-3xl pointer-events-none"></div>
+
+      <!-- Header -->
+      <div class="flex justify-between items-center border-b border-slate-800 pb-3 mb-4 z-10">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-2xl bg-purple-950 border border-purple-500 flex items-center justify-center text-xl shadow-lg">📖</div>
+          <div>
+            <h3 class="text-base font-bold text-purple-300 font-mono tracking-wider flex items-center gap-2">
+              <span>VESSEL ARCHIVES // OBLIVION'S EDGE</span>
+              <span class="text-[10px] bg-purple-950 text-purple-300 px-2 py-0.5 rounded border border-purple-700">CLASSIFIED LOG</span>
+            </h3>
+            <p class="text-xs text-slate-400">Atmospheric lore chronicles, visual briefings, and voice-assisted transmissions.</p>
+          </div>
+        </div>
+        <button onclick="toggleStorylineModal()" class="text-slate-400 hover:text-white text-2xl font-mono px-2">&times;</button>
+      </div>
+
+      <!-- Chapter Tabs -->
+      <div class="flex gap-2 border-b border-slate-800 pb-3 mb-4 text-xs font-mono z-10">
+        <button onclick="setStoryChapter(0)" id="storyTab0" class="px-3 py-1.5 rounded-xl bg-purple-900/70 border border-purple-500 text-purple-200 font-bold transition">PROLOGUE</button>
+        <button onclick="setStoryChapter(1)" id="storyTab1" class="px-3 py-1.5 rounded-xl bg-slate-950 border border-slate-800 text-slate-400 hover:text-slate-200 transition">CHAPTER I: GENESIS</button>
+        <button onclick="setStoryChapter(2)" id="storyTab2" class="px-3 py-1.5 rounded-xl bg-slate-950 border border-slate-800 text-slate-400 hover:text-slate-200 transition">CHAPTER II: DEATHSTORM</button>
+        <button onclick="setStoryChapter(3)" id="storyTab3" class="px-3 py-1.5 rounded-xl bg-slate-950 border border-slate-800 text-slate-400 hover:text-slate-200 transition">CHAPTER III: VOID RECKONING</button>
+      </div>
+
+      <!-- Main Story Body (Split: Artwork Left, Lore & Voice Right) -->
+      <div class="flex-1 overflow-y-auto grid grid-cols-1 md:grid-cols-12 gap-5 z-10 pr-1">
+        <!-- Visual Artwork Card -->
+        <div class="md:col-span-5 bg-slate-950 rounded-2xl border border-slate-800 p-3 flex flex-col items-center justify-center relative overflow-hidden shadow-inner">
+          <div id="storyArtworkContainer" class="w-full h-56 rounded-xl flex items-center justify-center overflow-hidden border border-slate-800/80 bg-gradient-to-b from-slate-900 to-[#040813]">
+            <!-- Rendered SVG Art -->
+          </div>
+          <div id="storyArtworkCaption" class="mt-2 text-[10px] font-mono text-cyan-400 tracking-wider text-center">
+            FIGURE 1.1: USSC OBLIVION DERELICT AT ABYSS EDGE
+          </div>
+        </div>
+
+        <!-- Lore Text & Audio Narrator -->
+        <div class="md:col-span-7 flex flex-col justify-between space-y-4">
+          <div>
+            <div id="storyChapterBadge" class="text-[11px] font-mono text-purple-400 font-bold uppercase tracking-wider mb-1">
+              PROLOGUE // DISPATCH TO EVA UNIT 09
+            </div>
+            <h4 id="storyChapterTitle" class="text-lg font-black font-mono text-slate-100 glow-purple mb-2">
+              The Catastrophe at Oblivion's Outpost
+            </h4>
+            <div id="storyChapterText" class="text-xs text-slate-300 font-mono leading-relaxed space-y-2.5">
+              <!-- Rendered Text -->
+            </div>
+          </div>
+
+          <!-- Voice Synthesizer & Audio Equalizer Panel -->
+          <div class="p-3 bg-slate-950 rounded-2xl border border-purple-500/40 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+              <button onclick="toggleVoiceNarration()" id="voiceToggleBtn" class="px-4 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-mono font-bold text-xs rounded-xl shadow-lg flex items-center gap-2 transition">
+                <span id="voiceIcon">🔊</span>
+                <span id="voiceBtnText">PLAY VOICE NARRATION</span>
+              </button>
+              <!-- Animated Equalizer Bars -->
+              <div id="voiceEqualizer" class="flex items-end gap-1 h-5 hidden">
+                <div class="w-1 bg-purple-400 rounded-full eq-bar-1"></div>
+                <div class="w-1 bg-cyan-400 rounded-full eq-bar-2"></div>
+                <div class="w-1 bg-pink-400 rounded-full eq-bar-3"></div>
+                <div class="w-1 bg-purple-400 rounded-full eq-bar-4"></div>
+              </div>
+            </div>
+            <div class="text-[10px] font-mono text-slate-400 text-right">
+              <div>VOCAL HARMONICS: <span id="voiceStatusText" class="text-purple-400 font-bold">READY</span></div>
+              <div class="text-slate-500">VOICE SYNTHESIS v2.4</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Navigation Footer -->
+      <div class="flex justify-between items-center border-t border-slate-800 pt-3 mt-4 text-xs font-mono text-slate-400 z-10">
+        <button onclick="prevStoryChapter()" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold rounded-xl transition">
+          &larr; PREVIOUS CHAPTER
+        </button>
+        <div class="flex items-center gap-2">
+          <span class="w-2 h-2 rounded-full bg-purple-400" id="dot0"></span>
+          <span class="w-2 h-2 rounded-full bg-slate-700" id="dot1"></span>
+          <span class="w-2 h-2 rounded-full bg-slate-700" id="dot2"></span>
+          <span class="w-2 h-2 rounded-full bg-slate-700" id="dot3"></span>
+        </div>
+        <button onclick="nextStoryChapter()" class="px-5 py-2 bg-purple-600 hover:bg-purple-500 text-white font-bold rounded-xl shadow-lg transition">
+          NEXT CHAPTER &rarr;
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================== -->
   <!-- MODAL: CYBERPUNK WEAPONS & TECH SHOP (B)   -->
   <!-- ========================================== -->
   <div id="modalShop" class="absolute inset-0 bg-black/85 backdrop-blur-md flex items-center justify-center z-40 hidden">
@@ -258,10 +363,7 @@
         </div>
       </div>
 
-      <!-- Shop Items Grid -->
-      <div id="shopItemsContainer" class="flex-1 overflow-y-auto pr-1 space-y-3">
-        <!-- Rendered dynamically by JavaScript -->
-      </div>
+      <div id="shopItemsContainer" class="flex-1 overflow-y-auto pr-1 space-y-3"></div>
 
       <div class="flex justify-between items-center border-t border-slate-800 pt-3 mt-4 text-xs font-mono text-slate-400">
         <span>Hotkey: Press <strong class="text-cyan-400">B</strong> anytime to open/close Shop.</span>
@@ -379,22 +481,18 @@
         <div class="bg-slate-950 p-3 rounded-xl border border-slate-800">
           <strong class="text-cyan-300">CONTROLS:</strong><br>
           &bull; <strong>A / D or Arrow Keys:</strong> Move Survivor Left / Right<br>
-          &bull; <strong>Space / W:</strong> Jump / Climb Rooftops<br>
+          &bull; <strong>Space / W:</strong> Jump & Double-Jump Jetpack (Press again in mid-air!)<br>
+          &bull; <strong>Gravity Lifts:</strong> Step on glowing <span class="text-cyan-400 font-bold">▲ LIFT ▲</span> pads beside buildings to launch directly onto roofs!<br>
+          &bull; <strong>S + Space or Down:</strong> Drop down through roofs and catwalks<br>
+          &bull; <strong>Wall Slide / Kick:</strong> Hold against building walls to slide, press Jump to kick off!<br>
           &bull; <strong>Shift:</strong> Phantom Dash (invulnerable dodge)<br>
           &bull; <strong>Left Click:</strong> 360&deg; Mouse Aim & Fire Weapon<br>
           &bull; <strong>R:</strong> Reload Magazine<br>
           &bull; <strong>E:</strong> Interact with Buildings, Terminals, Healing Pods & Crates<br>
           &bull; <strong>B:</strong> Open Armory Shop & Upgrades Menu<br>
+          &bull; <strong>H:</strong> Open Voice-Narrated Storyline Archives<br>
           &bull; <strong>Q:</strong> Activate EMP Stun Shockwave<br>
-          &bull; <strong>1 / 2 / 3 / 4:</strong> Switch Weapons (Pistol / Scatter / Railgun / Axe)<br>
           &bull; <strong>K:</strong> Hackathon Cheat (+500 Nanite Credits for instant test)
-        </div>
-        <div class="bg-slate-950 p-3 rounded-xl border border-slate-800">
-          <strong class="text-amber-300">GAMEPLAY LOOP:</strong><br>
-          1. <strong>Explore Buildings:</strong> Enter the Armory, Nanite Refinery, and Cyber-Med Bay.<br>
-          2. <strong>Earn Currency:</strong> Destroy enemies & smash supply crates to collect Nanite Credits (`NC`).<br>
-          3. <strong>Upgrade Gear:</strong> Spend credits on Mk-II guns, kinetic shields, and combat companion drones.<br>
-          4. <strong>Conquer 3 Sectors:</strong> Progress through Outpost Perimeter &rarr; Subterranean Bio-Labs &rarr; Orbital Citadel to slay the Archon Prime!
         </div>
       </div>
       <div class="flex justify-end pt-3">
@@ -442,7 +540,6 @@
   <!-- JAVASCRIPT: UNIFIED HACKATHON GAME ENGINE  -->
   <!-- ========================================== -->
   <script>
-    // --- Canvas & Hi-DPI Setup ---
     const canvas = document.getElementById('gameCanvas');
     const ctx = canvas.getContext('2d');
     let width, height;
@@ -511,6 +608,15 @@
     function sfxCrate() { playTone(180, 'sawtooth', 0.15, 0.12); }
     function sfxEmp() { playTone(280, 'sawtooth', 0.45, 0.2); }
     function sfxDrone() { playTone(900, 'square', 0.05, 0.04); }
+    function sfxJetpack() {
+      playTone(550, 'sine', 0.12, 0.1);
+      setTimeout(() => playTone(820, 'triangle', 0.12, 0.08), 35);
+    }
+    function sfxLift() {
+      playTone(320, 'sine', 0.1, 0.15);
+      setTimeout(() => playTone(640, 'sawtooth', 0.2, 0.12), 40);
+      setTimeout(() => playTone(960, 'triangle', 0.25, 0.1), 80);
+    }
 
     // --- GAME STATE ---
     const state = {
@@ -532,9 +638,12 @@
         vy: 0,
         width: 24,
         height: 48,
-        speed: 5.2,
-        jumpForce: 13.5,
+        speed: 5.4,
+        jumpForce: 15.2,
         isGrounded: false,
+        jumpsLeft: 2,
+        maxJumps: 2,
+        isOnWall: false,
         dashTimer: 0,
         dashCooldown: 0,
         dashMaxCooldown: 1.2,
@@ -568,7 +677,6 @@
         core: false,
         deathstorm: false
       },
-      // Shop Catalog
       shopCatalog: [
         { id: "pistol_mod", name: "Pulse Pistol Mk-II Overclock", desc: "+50% Damage (18 -> 27) & Rapid Blue Plasma", price: 120, bought: false, type: "weapon" },
         { id: "scatter_mod", name: "Scattergun Heavy Choke", desc: "+2 Pellets & Tighter Spread Pattern", price: 180, bought: false, type: "weapon" },
@@ -582,9 +690,9 @@
         { id: "med_syringe", name: "Nanite Med-Syringe", desc: "Instantly restores +60 Hull Health", price: 50, repeatable: true, type: "consumable" },
         { id: "ammo_crate", name: "Full Munitions Supply", desc: "Refills all weapon reserve magazines to maximum", price: 40, repeatable: true, type: "consumable" }
       ],
-      // Entities per level
       buildings: [],
       platforms: [],
+      jumpPads: [],
       interactables: [],
       pickups: [],
       crates: [],
@@ -612,32 +720,30 @@
       craftingActive: false
     };
 
-    // --- LEVEL DEFINITIONS ---
+    // --- LEVEL DEFINITIONS (ENHANCED ROOFS, LADDERS, AND ONE-WAY PLATFORMS) ---
     function initLevel(lvlNum) {
       state.currentLevel = lvlNum;
       state.bullets = [];
       state.particles = [];
       state.pickups = [];
 
-      // Update HUD Level info
       document.getElementById('lvlBtn1').className = lvlNum === 1 ? "px-2 py-0.5 rounded bg-cyan-950 text-cyan-300 border border-cyan-600 font-bold hover:bg-cyan-900 transition" : "px-2 py-0.5 rounded bg-slate-950 text-slate-400 border border-slate-800 hover:text-slate-200 transition";
       document.getElementById('lvlBtn2').className = lvlNum === 2 ? "px-2 py-0.5 rounded bg-cyan-950 text-cyan-300 border border-cyan-600 font-bold hover:bg-cyan-900 transition" : "px-2 py-0.5 rounded bg-slate-950 text-slate-400 border border-slate-800 hover:text-slate-200 transition";
       document.getElementById('lvlBtn3').className = lvlNum === 3 ? "px-2 py-0.5 rounded bg-cyan-950 text-cyan-300 border border-cyan-600 font-bold hover:bg-cyan-900 transition" : "px-2 py-0.5 rounded bg-slate-950 text-slate-400 border border-slate-800 hover:text-slate-200 transition";
 
-      // Reset survivor position
       state.player.x = 120;
       state.player.y = 440;
       state.player.vx = 0;
       state.player.vy = 0;
+      state.player.jumpsLeft = 2;
       state.camera.x = 0;
       state.camera.y = 0;
 
       if (lvlNum === 1) {
         document.getElementById('levelTitle').textContent = "SECTOR 01: OUTPOST PERIMETER";
-        document.getElementById('objectiveText').textContent = "Infiltrate Armory & Refinery, loot supply crates, override dial lock, and breach the Sector 2 Airlock.";
+        document.getElementById('objectiveText').textContent = "Explore Armory & Refinery, use Gravity Lifts & Double-Jump to explore rooftops, override dial lock, and breach Sector 2.";
         document.getElementById('bossHud').style.opacity = '0';
 
-        // Buildings for Level 1
         state.buildings = [
           {
             name: "ARMORY // MUNITIONS & TECH",
@@ -664,45 +770,56 @@
           }
         ];
 
-        // Platforms
+        // Platforms (Ground is solid; Rooftops & Catwalks are oneWay so jumping up through them works effortlessly)
         state.platforms = [
-          { x: 0, y: 520, w: 2900, h: 60, label: "Ground Perimeter Deck" },
-          { x: 0, y: 0, w: 2900, h: 40 },
-          { x: -40, y: 0, w: 40, h: 600 },
-          { x: 2860, y: 0, w: 40, h: 600 },
-          // Rooftops & Catwalks
-          { x: 480, y: 220, w: 460, h: 20, label: "Armory Roof" },
-          { x: 320, y: 380, w: 120, h: 18 },
-          { x: 980, y: 360, w: 180, h: 18 },
-          { x: 1380, y: 200, w: 520, h: 20, label: "Refinery Roof" },
-          { x: 1940, y: 340, w: 200, h: 18 },
-          { x: 2350, y: 260, w: 320, h: 20, label: "Airlock Roof" }
+          { x: 0, y: 520, w: 2900, h: 60, label: "Ground Perimeter Deck", solid: true },
+          { x: 0, y: 0, w: 2900, h: 40, solid: true },
+          { x: -40, y: 0, w: 40, h: 600, solid: true },
+          { x: 2860, y: 0, w: 40, h: 600, solid: true },
+          // Armory Rooftop & Stepping Catwalks
+          { x: 480, y: 220, w: 460, h: 18, label: "Armory Roof", oneWay: true },
+          { x: 300, y: 440, w: 100, h: 16, oneWay: true }, // Step 1
+          { x: 380, y: 340, w: 100, h: 16, oneWay: true }, // Step 2
+          { x: 940, y: 350, w: 120, h: 16, oneWay: true }, // Right Catwalk
+          // Refinery Rooftop & Stepping Catwalks
+          { x: 1380, y: 200, w: 520, h: 18, label: "Refinery Roof", oneWay: true },
+          { x: 1200, y: 430, w: 110, h: 16, oneWay: true },
+          { x: 1280, y: 320, w: 100, h: 16, oneWay: true },
+          { x: 1900, y: 340, w: 120, h: 16, oneWay: true },
+          // Airlock Rooftop
+          { x: 2350, y: 260, w: 320, h: 18, label: "Airlock Roof", oneWay: true },
+          { x: 2220, y: 400, w: 110, h: 16, oneWay: true }
         ];
 
-        // Loot crates & breakables
+        // Vertical Gravity Lifts (Jump Pads beside buildings)
+        state.jumpPads = [
+          { x: 430, y: 512, w: 40, h: 8, label: "LIFT" },
+          { x: 950, y: 512, w: 40, h: 8, label: "LIFT" },
+          { x: 1330, y: 512, w: 40, h: 8, label: "LIFT" },
+          { x: 1910, y: 512, w: 40, h: 8, label: "LIFT" },
+          { x: 2300, y: 512, w: 40, h: 8, label: "LIFT" }
+        ];
+
         state.crates = [
           { x: 400, y: 485, w: 30, h: 35, hp: 30, opened: false },
           { x: 800, y: 485, w: 30, h: 35, hp: 30, opened: false },
-          { x: 620, y: 185, w: 30, h: 35, hp: 30, opened: false },
+          { x: 620, y: 185, w: 30, h: 35, hp: 30, opened: false }, // on roof
           { x: 1240, y: 485, w: 30, h: 35, hp: 30, opened: false },
-          { x: 1720, y: 165, w: 30, h: 35, hp: 30, opened: false },
+          { x: 1720, y: 165, w: 30, h: 35, hp: 30, opened: false }, // on roof
           { x: 2200, y: 485, w: 30, h: 35, hp: 30, opened: false }
         ];
 
-        // Interactables
         state.interactables = [
           { id: "shop_armory", x: 720, y: 480, r: 40, title: "Armory Shop Kiosk", active: true },
           { id: "puzzle_handle", x: 1640, y: 480, r: 40, title: "Engineering Dial Lock", active: true },
           { id: "airlock_exit1", x: 2520, y: 480, r: 45, title: "Sector 2 Transit Gate", active: true }
         ];
 
-        // Enemies
         state.drones = [
           { x: 600, y: 470, vx: 1.5, hp: 50, maxHp: 50, r: 16, type: 'crawler' },
           { x: 1100, y: 470, vx: -1.8, hp: 60, maxHp: 60, r: 16, type: 'spitter', shootTimer: 0 },
           { x: 1500, y: 470, vx: 2.0, hp: 70, maxHp: 70, r: 16, type: 'crawler' },
           { x: 1950, y: 310, vx: -1.5, hp: 65, maxHp: 65, r: 16, type: 'spitter', shootTimer: 0 },
-          // Sentinel Mini-Boss guarding Level 1 Exit
           { x: 2280, y: 450, vx: 1.0, hp: 280, maxHp: 280, r: 26, type: 'sentinel', shootTimer: 0, isMiniBoss: true }
         ];
 
@@ -710,10 +827,9 @@
       }
       else if (lvlNum === 2) {
         document.getElementById('levelTitle').textContent = "SECTOR 02: SUBTERRANEAN BIO-LABS";
-        document.getElementById('objectiveText').textContent = "Navigate bioluminescent labs, heal at Cyber-Med Bay, solve Optics Laser, and board the Freight Lift.";
+        document.getElementById('objectiveText').textContent = "Navigate bioluminescent labs, heal at Cyber-Med Bay, jump onto Observatory dome, solve Optics Laser, and board the Freight Lift.";
         document.getElementById('bossHud').style.opacity = '0';
 
-        // Buildings for Level 2
         state.buildings = [
           {
             name: "CYBER-MED // LIFE SUPPORT",
@@ -740,38 +856,49 @@
           }
         ];
 
-        // Platforms
         state.platforms = [
-          { x: 0, y: 520, w: 2900, h: 60, label: "Subterranean Lab Floor" },
-          { x: 0, y: 0, w: 2900, h: 40 },
-          { x: -40, y: 0, w: 40, h: 600 },
-          { x: 2860, y: 0, w: 40, h: 600 },
-          { x: 440, y: 220, w: 480, h: 20, label: "Med-Bay Roof" },
-          { x: 260, y: 370, w: 140, h: 18 },
-          { x: 1000, y: 350, w: 200, h: 18 },
-          { x: 1350, y: 190, w: 540, h: 20, label: "Observatory Roof" },
-          { x: 1980, y: 330, w: 200, h: 18 },
-          { x: 2350, y: 240, w: 340, h: 20, label: "Freight Deck" }
+          { x: 0, y: 520, w: 2900, h: 60, label: "Subterranean Lab Floor", solid: true },
+          { x: 0, y: 0, w: 2900, h: 40, solid: true },
+          { x: -40, y: 0, w: 40, h: 600, solid: true },
+          { x: 2860, y: 0, w: 40, h: 600, solid: true },
+          // Med-Bay Rooftop & Catwalks
+          { x: 440, y: 220, w: 480, h: 18, label: "Med-Bay Roof", oneWay: true },
+          { x: 280, y: 430, w: 100, h: 16, oneWay: true },
+          { x: 350, y: 330, w: 90, h: 16, oneWay: true },
+          { x: 940, y: 340, w: 110, h: 16, oneWay: true },
+          // Optics Observatory Roof & Catwalks
+          { x: 1350, y: 190, w: 540, h: 18, label: "Observatory Roof", oneWay: true },
+          { x: 1180, y: 430, w: 100, h: 16, oneWay: true },
+          { x: 1250, y: 320, w: 100, h: 16, oneWay: true },
+          { x: 1920, y: 330, w: 120, h: 16, oneWay: true },
+          // Freight Lift Deck
+          { x: 2350, y: 240, w: 340, h: 18, label: "Freight Deck", oneWay: true },
+          { x: 2210, y: 390, w: 110, h: 16, oneWay: true }
         ];
 
-        // Crates
+        state.jumpPads = [
+          { x: 390, y: 512, w: 40, h: 8, label: "LIFT" },
+          { x: 930, y: 512, w: 40, h: 8, label: "LIFT" },
+          { x: 1290, y: 512, w: 40, h: 8, label: "LIFT" },
+          { x: 1900, y: 512, w: 40, h: 8, label: "LIFT" },
+          { x: 2290, y: 512, w: 40, h: 8, label: "LIFT" }
+        ];
+
         state.crates = [
           { x: 380, y: 485, w: 30, h: 35, hp: 30, opened: false },
-          { x: 740, y: 185, w: 30, h: 35, hp: 30, opened: false },
+          { x: 740, y: 185, w: 30, h: 35, hp: 30, opened: false }, // on roof
           { x: 1100, y: 315, w: 30, h: 35, hp: 30, opened: false },
           { x: 1420, y: 485, w: 30, h: 35, hp: 30, opened: false },
-          { x: 1780, y: 155, w: 30, h: 35, hp: 30, opened: false },
+          { x: 1780, y: 155, w: 30, h: 35, hp: 30, opened: false }, // on roof
           { x: 2240, y: 485, w: 30, h: 35, hp: 30, opened: false }
         ];
 
-        // Interactables
         state.interactables = [
           { id: "heal_pod", x: 680, y: 480, r: 40, title: "Med-Bay Regeneration Pod", active: true },
           { id: "puzzle_edge", x: 1620, y: 480, r: 40, title: "Optics Laser Conduit", active: true },
           { id: "airlock_exit2", x: 2530, y: 480, r: 45, title: "Orbital Freight Lift", active: true }
         ];
 
-        // Enemies
         state.drones = [
           { x: 550, y: 470, vx: -2.0, hp: 75, maxHp: 75, r: 16, type: 'spitter', shootTimer: 0 },
           { x: 920, y: 470, vx: 2.2, hp: 80, maxHp: 80, r: 16, type: 'crawler' },
@@ -785,9 +912,8 @@
       }
       else if (lvlNum === 3) {
         document.getElementById('levelTitle').textContent = "SECTOR 03: ORBITAL COMMAND CITADEL";
-        document.getElementById('objectiveText').textContent = "Forge DeathStorm Void Axe at Synthesis Altar, shatter Archon's armor, and eliminate the Core!";
+        document.getElementById('objectiveText').textContent = "Forge DeathStorm Void Axe at Synthesis Altar, scale Citadel Spires, shatter Archon's armor, and eliminate the Core!";
 
-        // Buildings for Level 3
         state.buildings = [
           {
             name: "DEATHSTORM FORGE ALTAR",
@@ -806,17 +932,29 @@
           }
         ];
 
-        // Platforms
         state.platforms = [
-          { x: 0, y: 520, w: 2600, h: 60, label: "Citadel Deck" },
-          { x: 0, y: 0, w: 2600, h: 40 },
-          { x: -40, y: 0, w: 40, h: 600 },
-          { x: 2560, y: 0, w: 40, h: 600 },
-          { x: 400, y: 220, w: 460, h: 20, label: "Forge Roof" },
-          { x: 920, y: 360, w: 200, h: 18 },
-          { x: 1250, y: 160, w: 900, h: 20, label: "Citadel Spires" },
-          { x: 1450, y: 350, w: 220, h: 18 },
-          { x: 1800, y: 350, w: 220, h: 18 }
+          { x: 0, y: 520, w: 2600, h: 60, label: "Citadel Deck", solid: true },
+          { x: 0, y: 0, w: 2600, h: 40, solid: true },
+          { x: -40, y: 0, w: 40, h: 600, solid: true },
+          { x: 2560, y: 0, w: 40, h: 600, solid: true },
+          // Forge Rooftop
+          { x: 400, y: 220, w: 460, h: 18, label: "Forge Roof", oneWay: true },
+          { x: 260, y: 410, w: 100, h: 16, oneWay: true },
+          { x: 330, y: 310, w: 90, h: 16, oneWay: true },
+          { x: 900, y: 350, w: 120, h: 16, oneWay: true },
+          // Citadel Elevated Spires
+          { x: 1250, y: 160, w: 900, h: 18, label: "Citadel Spires", oneWay: true },
+          { x: 1100, y: 400, w: 110, h: 16, oneWay: true },
+          { x: 1180, y: 280, w: 100, h: 16, oneWay: true },
+          { x: 1450, y: 350, w: 220, h: 16, oneWay: true },
+          { x: 1800, y: 350, w: 220, h: 16, oneWay: true }
+        ];
+
+        state.jumpPads = [
+          { x: 350, y: 512, w: 40, h: 8, label: "LIFT" },
+          { x: 880, y: 512, w: 40, h: 8, label: "LIFT" },
+          { x: 1200, y: 512, w: 40, h: 8, label: "LIFT" },
+          { x: 2180, y: 512, w: 40, h: 8, label: "LIFT" }
         ];
 
         state.crates = [
@@ -835,7 +973,6 @@
           { x: 1100, y: 470, vx: 2.0, hp: 90, maxHp: 90, r: 16, type: 'spitter', shootTimer: 0 }
         ];
 
-        // Boss
         state.boss = {
           x: 1900,
           y: 440,
@@ -921,7 +1058,6 @@
       sfxEmp();
       state.shake = 18;
 
-      // Blast wave animation
       for (let i = 0; i < 40; i++) {
         const ang = (i / 40) * Math.PI * 2;
         state.particles.push({
@@ -935,7 +1071,6 @@
         });
       }
 
-      // Damage and stun all active enemies
       state.drones.forEach(d => {
         d.hp -= 80;
         d.vx = 0;
@@ -1009,7 +1144,6 @@
       document.getElementById('shopBalance').textContent = `${state.credits}`;
       sfxBuy();
 
-      // Apply Upgrade Effects
       if (item.id === "pistol_mod") {
         item.bought = true;
         state.weapons[0].damage = 27;
@@ -1077,18 +1211,329 @@
       document.getElementById('shieldNum').textContent = `${Math.ceil(Math.max(0, p.shield))}%`;
     }
 
-    // --- INPUT MANAGEMENT ---
+    // --- STORYLINE SYSTEM WITH CUSTOM ARTWORKS & VOICE SYNTHESIZER ---
+    const storylineData = [
+      {
+        badge: "PROLOGUE // DISPATCH TO EVA UNIT 09",
+        title: "The Catastrophe at Oblivion's Outpost",
+        caption: "FIGURE 1.1: USSC OBLIVION DERELICT AT ABYSS EDGE",
+        art: `<svg viewBox="0 0 320 220" class="w-full h-full" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <linearGradient id="spaceGrad" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="#050814"/>
+              <stop offset="100%" stop-color="#140628"/>
+            </linearGradient>
+            <radialGradient id="nebulaGlow" cx="60%" cy="40%" r="50%">
+              <stop offset="0%" stop-color="#7c3aed" stop-opacity="0.45"/>
+              <stop offset="100%" stop-color="#000" stop-opacity="0"/>
+            </radialGradient>
+          </defs>
+          <rect width="320" height="220" fill="url(#spaceGrad)"/>
+          <circle cx="200" cy="90" r="85" fill="url(#nebulaGlow)"/>
+          <!-- Starfield -->
+          <circle cx="45" cy="30" r="1.5" fill="#fff" opacity="0.8"/>
+          <circle cx="120" cy="45" r="1.2" fill="#fff" opacity="0.6"/>
+          <circle cx="280" cy="25" r="1.5" fill="#38bdf8" opacity="0.9"/>
+          <circle cx="90" cy="180" r="1.2" fill="#fff" opacity="0.7"/>
+          <circle cx="290" cy="190" r="1.8" fill="#ec4899" opacity="0.8"/>
+          <!-- Starship Silhouette -->
+          <path d="M 40 120 L 140 85 L 240 100 L 280 120 L 230 145 L 120 140 Z" fill="#0f172a" stroke="#38bdf8" stroke-width="2"/>
+          <path d="M 120 85 L 150 60 L 190 70 L 170 95 Z" fill="#1e293b" stroke="#06b6d4" stroke-width="1.5"/>
+          <line x1="280" y1="120" x2="310" y2="120" stroke="#f43f5e" stroke-width="3" stroke-dasharray="4"/>
+          <!-- Distress beacon pulses -->
+          <circle cx="140" cy="85" r="6" fill="#ef4444" opacity="0.9">
+            <animate attributeName="r" values="3;14;3" dur="1.8s" repeatCount="indefinite"/>
+            <animate attributeName="opacity" values="1;0;1" dur="1.8s" repeatCount="indefinite"/>
+          </circle>
+          <!-- Text HUD Overlay -->
+          <text x="15" y="25" fill="#06b6d4" font-family="monospace" font-size="9" font-weight="bold">STATUS: CRITICAL CONTAINMENT LOSS</text>
+          <text x="15" y="38" fill="#94a3b8" font-family="monospace" font-size="8">ORBITAL DECAY: -0.04 AU/HR</text>
+        </svg>`,
+        paragraphs: [
+          "Deep space research cruiser USSC Oblivion fell silent seventy-two solar hours ago along the outer rim of the galactic abyss.",
+          "The science division was synthesizing classified bio-mechanical alloys when an apex lifeform breached containment Sector 4, overriding the station AI.",
+          "As EVA-Survivor 09, your life-support suit is all that remains between salvation and the void. Breach the perimeter and recover the three ancient weapon relics before total structural collapse."
+        ]
+      },
+      {
+        badge: "CHAPTER I // BIOLOGICAL HAZARD ANALYSIS",
+        title: "The Archon Genesis & Bio-Mutations",
+        caption: "FIGURE 1.2: SYNTHETIC ORGANISM RUPTURING CONTAINMENT",
+        art: `<svg viewBox="0 0 320 220" class="w-full h-full" xmlns="http://www.w3.org/2000/svg">
+          <rect width="320" height="220" fill="#0a0512"/>
+          <!-- Bioreactor Chamber -->
+          <rect x="70" y="30" width="180" height="160" rx="16" fill="#120924" stroke="#a855f7" stroke-width="2.5"/>
+          <circle cx="160" cy="110" r="55" fill="#3b0764" stroke="#ec4899" stroke-width="2"/>
+          <!-- Alien Core with glowing eye -->
+          <circle cx="160" cy="110" r="30" fill="#be185d">
+            <animate attributeName="r" values="28;34;28" dur="1.2s" repeatCount="indefinite"/>
+          </circle>
+          <circle cx="160" cy="110" r="12" fill="#f43f5e"/>
+          <!-- Chitin Spikes -->
+          <path d="M 125 75 L 100 50 M 195 75 L 220 50 M 115 140 L 90 165 M 205 140 L 230 165" stroke="#f43f5e" stroke-width="3.5" stroke-linecap="round"/>
+          <!-- Shattered Glass lines -->
+          <line x1="85" y1="45" x2="140" y2="90" stroke="#38bdf8" stroke-width="1.5" stroke-dasharray="3,2"/>
+          <line x1="230" y1="160" x2="185" y2="120" stroke="#38bdf8" stroke-width="1.5" stroke-dasharray="4,2"/>
+          <text x="80" y="205" fill="#f43f5e" font-family="monospace" font-size="9" font-weight="bold">MUTATION LEVEL: APEX ARCHON PRIME</text>
+        </svg>`,
+        paragraphs: [
+          "The synthetic organisms did not perish—they integrated with the ship's reactor conduits, absorbing high-energy plasma.",
+          "It forged an impervious chitin carapace and spawned swarms of acid spitters and biological crawlers that infest the corridors.",
+          "Conventional small arms cannot penetrate its primary carapace shell. A weapon forged from void resonance is required."
+        ]
+      },
+      {
+        badge: "CHAPTER II // ANCIENT FORGE SCHEMATICS",
+        title: "The DeathStorm Tri-Part Relics",
+        caption: "FIGURE 1.3: BLUEPRINT MATRIX OF THE VOID AXE",
+        art: `<svg viewBox="0 0 320 220" class="w-full h-full" xmlns="http://www.w3.org/2000/svg">
+          <rect width="320" height="220" fill="#040b17"/>
+          <!-- Blueprint Grid -->
+          <pattern id="grid" width="20" height="20" patternUnits="userSpaceOnUse">
+            <path d="M 20 0 L 0 0 0 20" fill="none" stroke="#0e2338" stroke-width="1"/>
+          </pattern>
+          <rect width="320" height="220" fill="url(#grid)"/>
+          <!-- Holographic Axe Illustration -->
+          <!-- Handle Shaft -->
+          <line x1="160" y1="190" x2="160" y2="60" stroke="#38bdf8" stroke-width="5" stroke-linecap="round"/>
+          <!-- Axe Blade Head (Edge) -->
+          <path d="M 160 70 Q 220 40 240 85 Q 210 115 160 110 Z" fill="rgba(236,72,153,0.3)" stroke="#ec4899" stroke-width="2.5"/>
+          <!-- Back Spikes -->
+          <path d="M 160 75 L 120 65 L 130 95 Z" fill="rgba(6,182,212,0.3)" stroke="#06b6d4" stroke-width="2"/>
+          <!-- Power Core in center -->
+          <circle cx="160" cy="88" r="9" fill="#f59e0b" stroke="#fff" stroke-width="1.5">
+            <animate attributeName="fill" values="#f59e0b;#ec4899;#f59e0b" dur="1s" repeatCount="indefinite"/>
+          </circle>
+          <!-- Callout lines -->
+          <text x="215" y="50" fill="#ec4899" font-family="monospace" font-size="8">[1] PRISM EDGE</text>
+          <text x="80" y="145" fill="#38bdf8" font-family="monospace" font-size="8">[2] ROTARY HANDLE</text>
+          <text x="180" y="115" fill="#f59e0b" font-family="monospace" font-size="8">[3] VOID CORE</text>
+          <text x="20" y="205" fill="#38bdf8" font-family="monospace" font-size="9" font-weight="bold">FORGE COOLDOWN: 60 SECONDS UNTIL OVERLOAD</text>
+        </svg>`,
+        paragraphs: [
+          "Before the command bridge was overrun, Chief Engineer Vane divided the legendary DeathStorm Void Axe into three decoupled components.",
+          "The Prismatic Laser Edge was sealed inside the Optics Lab refraction vault. The Rotary Dial Handle was secured in the Refinery dock.",
+          "Gather all three relics to assemble the DeathStorm Axe at the Synthesis Altar. Once forged, you have exactly sixty seconds to crack the Archon's core before void meltdown."
+        ]
+      },
+      {
+        badge: "CHAPTER III // FINAL CONFRONTATION",
+        title: "The Citadel Spires & Final Reckoning",
+        caption: "FIGURE 1.4: SURVIVOR AT THE ORBITAL CITADEL",
+        art: `<svg viewBox="0 0 320 220" class="w-full h-full" xmlns="http://www.w3.org/2000/svg">
+          <rect width="320" height="220" fill="#100318"/>
+          <!-- Purple Void Storm Aura -->
+          <circle cx="160" cy="80" r="75" fill="#701a75" opacity="0.35"/>
+          <!-- Citadel Spire Platforms -->
+          <rect x="40" y="150" width="80" height="70" fill="#1e1b4b" stroke="#818cf8" stroke-width="2"/>
+          <rect x="180" y="130" width="110" height="90" fill="#1e1b4b" stroke="#818cf8" stroke-width="2"/>
+          <!-- Survivor silhouette with Glowing Axe -->
+          <rect x="80" y="115" width="12" height="35" fill="#38bdf8"/>
+          <circle cx="86" cy="110" r="6" fill="#fff"/>
+          <!-- Glowing DeathStorm Axe in hand -->
+          <line x1="88" y1="125" x2="105" y2="95" stroke="#ec4899" stroke-width="4"/>
+          <path d="M 105 95 L 120 85 L 115 105 Z" fill="#ec4899"/>
+          <!-- Boss menacing shape -->
+          <circle cx="230" cy="90" r="38" fill="#4c0519" stroke="#f43f5e" stroke-width="3"/>
+          <circle cx="230" cy="90" r="14" fill="#e11d48"/>
+          <line x1="210" y1="65" x2="190" y2="45" stroke="#f43f5e" stroke-width="3"/>
+          <line x1="250" y1="65" x2="270" y2="45" stroke="#f43f5e" stroke-width="3"/>
+          <text x="35" y="25" fill="#c084fc" font-family="monospace" font-size="9" font-weight="bold">OBJECTIVE: CLEAVE ARCHON EXPOSED CORE</text>
+        </svg>`,
+        paragraphs: [
+          "The Orbital Citadel is the apex of the station. Here, high-gravity jump lifts allow you to scale fortified spires.",
+          "Use the pulse pistol and railgun to disrupt the Archon's armor shell, then cleave its exposed core node with the DeathStorm Axe.",
+          "Victory restores station stability and earns an S-Rank mission rating. Step into the airlock, Survivor—humanity's future hangs on your blade."
+        ]
+      }
+    ];
+
+    let curStoryIdx = 0;
+    let isSpeaking = false;
+    let synthUtterance = null;
+
+    function toggleStorylineModal() {
+      initAudio();
+      const modal = document.getElementById('modalStoryline');
+      if (modal.classList.contains('hidden')) {
+        modal.classList.remove('hidden');
+        renderStoryChapter(curStoryIdx);
+      } else {
+        stopVoiceNarration();
+        modal.classList.add('hidden');
+      }
+    }
+
+    function setStoryChapter(idx) {
+      initAudio();
+      stopVoiceNarration();
+      curStoryIdx = idx;
+      renderStoryChapter(idx);
+    }
+
+    function prevStoryChapter() {
+      if (curStoryIdx > 0) setStoryChapter(curStoryIdx - 1);
+      else setStoryChapter(storylineData.length - 1);
+    }
+
+    function nextStoryChapter() {
+      if (curStoryIdx < storylineData.length - 1) setStoryChapter(curStoryIdx + 1);
+      else setStoryChapter(0);
+    }
+
+    function renderStoryChapter(idx) {
+      const data = storylineData[idx];
+      document.getElementById('storyArtworkContainer').innerHTML = data.art;
+      document.getElementById('storyArtworkCaption').textContent = data.caption;
+      document.getElementById('storyChapterBadge').textContent = data.badge;
+      document.getElementById('storyChapterTitle').textContent = data.title;
+
+      const textContainer = document.getElementById('storyChapterText');
+      textContainer.innerHTML = data.paragraphs.map(p => `<p class="border-l-2 border-purple-500/60 pl-2.5">${p}</p>`).join('');
+
+      // Update Tab Buttons
+      for (let i = 0; i < 4; i++) {
+        const tab = document.getElementById(`storyTab${i}`);
+        const dot = document.getElementById(`dot${i}`);
+        if (i === idx) {
+          tab.className = "px-3 py-1.5 rounded-xl bg-purple-900/70 border border-purple-500 text-purple-200 font-bold transition";
+          dot.className = "w-2 h-2 rounded-full bg-purple-400";
+        } else {
+          tab.className = "px-3 py-1.5 rounded-xl bg-slate-950 border border-slate-800 text-slate-400 hover:text-slate-200 transition";
+          dot.className = "w-2 h-2 rounded-full bg-slate-700";
+        }
+      }
+
+      playTone(660, 'sine', 0.08, 0.06);
+    }
+
+    // --- VOICE NARRATION ENGINE (SPEECH SYNTHESIS API) ---
+    function toggleVoiceNarration() {
+      initAudio();
+      if (isSpeaking) {
+        stopVoiceNarration();
+      } else {
+        startVoiceNarration();
+      }
+    }
+
+    function startVoiceNarration() {
+      if (!window.speechSynthesis) {
+        showNotification("Speech synthesis not supported in this browser. Falling back to synth tones.");
+        playTone(440, 'triangle', 0.3, 0.1);
+        return;
+      }
+
+      window.speechSynthesis.cancel();
+      const data = storylineData[curStoryIdx];
+      const fullText = `${data.title}. ${data.paragraphs.join(' ')}`;
+
+      synthUtterance = new SpeechSynthesisUtterance(fullText);
+      synthUtterance.rate = 0.92; // Deliberate, clear sci-fi tone
+      synthUtterance.pitch = 0.88; // Deep, synthetic AI frequency
+
+      // Select natural robotic or english voice if present
+      const voices = window.speechSynthesis.getVoices();
+      const sciFiVoice = voices.find(v => v.lang.includes('en') && (v.name.includes('Google') || v.name.includes('Natural') || v.name.includes('David') || v.name.includes('Daniel')));
+      if (sciFiVoice) synthUtterance.voice = sciFiVoice;
+
+      synthUtterance.onstart = () => {
+        isSpeaking = true;
+        document.getElementById('voiceBtnText').textContent = "STOP NARRATION";
+        document.getElementById('voiceIcon').textContent = "⏹️";
+        document.getElementById('voiceEqualizer').classList.remove('hidden');
+        document.getElementById('voiceStatusText').textContent = "TRANSMITTING";
+        document.getElementById('voiceStatusText').className = "text-emerald-400 font-bold animate-pulse";
+      };
+
+      synthUtterance.onend = () => {
+        stopVoiceNarration();
+      };
+
+      synthUtterance.onerror = () => {
+        stopVoiceNarration();
+      };
+
+      window.speechSynthesis.speak(synthUtterance);
+    }
+
+    function stopVoiceNarration() {
+      if (window.speechSynthesis) {
+        window.speechSynthesis.cancel();
+      }
+      isSpeaking = false;
+      document.getElementById('voiceBtnText').textContent = "PLAY VOICE NARRATION";
+      document.getElementById('voiceIcon').textContent = "🔊";
+      document.getElementById('voiceEqualizer').classList.add('hidden');
+      document.getElementById('voiceStatusText').textContent = "READY";
+      document.getElementById('voiceStatusText').className = "text-purple-400 font-bold";
+    }
+
+    // Preload voices
+    if (window.speechSynthesis) {
+      window.speechSynthesis.onvoiceschanged = () => { window.speechSynthesis.getVoices(); };
+    }
+
+    // --- INPUT MANAGEMENT & DOUBLE-JUMP DISPATCH ---
     const keys = {};
     const mouse = { x: width / 2, y: height / 2, down: false };
+
+    function handleJumpPress() {
+      const p = state.player;
+      if (p.isGrounded) {
+        // Normal ground jump
+        p.vy = -p.jumpForce;
+        p.isGrounded = false;
+        p.jumpsLeft = p.maxJumps - 1;
+        playTone(330, 'sine', 0.1, 0.08);
+      } else if (p.isOnWall) {
+        // Wall kick!
+        p.vy = -p.jumpForce * 0.95;
+        p.vx = p.facingRight ? -p.speed * 1.3 : p.speed * 1.3;
+        p.facingRight = !p.facingRight;
+        p.jumpsLeft = 1;
+        p.isOnWall = false;
+        sfxJetpack();
+        for (let i = 0; i < 10; i++) {
+          state.particles.push({
+            x: p.x + (p.facingRight ? 0 : p.width),
+            y: p.y + p.height * 0.6,
+            vx: (p.facingRight ? -1 : 1) * Math.random() * 5,
+            vy: (Math.random() - 0.5) * 4,
+            r: 3, color: '#38bdf8', life: 15
+          });
+        }
+      } else if (p.jumpsLeft > 0) {
+        // Mid-air Micro-Thruster Jetpack (Double-Jump)!
+        p.vy = -p.jumpForce * 0.95;
+        p.jumpsLeft--;
+        sfxJetpack();
+        // Thruster sparks below feet
+        for (let i = 0; i < 12; i++) {
+          state.particles.push({
+            x: p.x + p.width / 2 + (Math.random() - 0.5) * 12,
+            y: p.y + p.height,
+            vx: (Math.random() - 0.5) * 4,
+            vy: Math.random() * 5 + 3,
+            r: 3.5, color: '#38bdf8', life: 20
+          });
+        }
+      }
+    }
 
     window.addEventListener('keydown', e => {
       initAudio();
       const k = e.key.toLowerCase();
       keys[k] = true;
-      if (e.key === ' ' || e.key === 'ArrowUp') e.preventDefault();
+
+      if (e.key === ' ' || e.key === 'ArrowUp' || k === 'w') {
+        e.preventDefault();
+        handleJumpPress();
+      }
       if (k === 'e') triggerInteraction();
       if (k === 'r') reloadWeapon();
       if (k === 'b') toggleShop();
+      if (k === 'h') toggleStorylineModal();
       if (k === 'q') activateEmp();
       if (k === 'k') addCheatCredits();
       if (k === 'l') switchLevel(state.currentLevel === 3 ? 1 : state.currentLevel + 1);
@@ -1107,14 +1552,12 @@
     });
     window.addEventListener('mouseup', e => { if (e.button === 0) mouse.down = false; });
 
-    // --- GAME CLOCK ---
     setInterval(() => {
       state.secondsElapsed++;
       const m = String(Math.floor(state.secondsElapsed / 60)).padStart(2, '0');
       const s = String(state.secondsElapsed % 60).padStart(2, '0');
       document.getElementById('clockDisplay').textContent = `${m}:${s}`;
 
-      // 60-second boss countdown
       if (state.craftingActive && state.craftingCountdown > 0) {
         state.craftingCountdown--;
         document.getElementById('countdownTimer').textContent = state.craftingCountdown.toFixed(1);
@@ -1126,7 +1569,6 @@
       }
     }, 1000);
 
-    // --- LASER PUZZLE LOGIC (MEMBER 6) ---
     const laserPuzzle = {
       solved: false,
       mirrors: [
@@ -1228,7 +1670,6 @@
       showNotification("💎 EDGE COMPONENT RECOVERED! +100 NC REWARD!");
     }
 
-    // --- HANDLE ROTARY PUZZLE (MEMBER 7) ---
     const handlePuzzle = { outerAngle: 0, innerAngle: 0, solved: false };
 
     function rotateHandleRing(ring) {
@@ -1260,7 +1701,6 @@
       showNotification("🔩 REFINERY DIAL OVERRIDDEN! HANDLE SECURED +100 NC!");
     }
 
-    // --- DEATHSTORM AXE CRAFTING ---
     function triggerForge() {
       state.inventory.deathstorm = true;
       state.craftingActive = true;
@@ -1272,7 +1712,6 @@
       showNotification("⚡ DEATHSTORM VOID AXE FORGED! 60s TO CRACK ARCHON CORE!");
     }
 
-    // --- INTERACTION SYSTEM ---
     function triggerInteraction() {
       const p = state.player;
       const px = p.x + p.width/2;
@@ -1295,7 +1734,6 @@
             document.getElementById('modalEdgePuzzle').classList.remove('hidden');
             renderLaserPuzzle();
           } else if (item.id === "airlock_exit1" || item.id === "airlock_exit2") {
-            // Level Clear Debrief!
             triggerSectorClear();
           } else if (item.id === "altar_forge") {
             triggerForge();
@@ -1304,7 +1742,6 @@
         }
       }
 
-      // Check nearby loot crates
       for (let c of state.crates) {
         if (!c.opened && Math.hypot(c.x + c.w/2 - px, c.y + c.h/2 - py) < 55) {
           breakCrate(c);
@@ -1348,7 +1785,9 @@
       document.getElementById('modalHandlePuzzle').classList.add('hidden');
       document.getElementById('modalHelp').classList.add('hidden');
       document.getElementById('modalShop').classList.add('hidden');
+      document.getElementById('modalStoryline').classList.add('hidden');
       document.getElementById('modalLevelClear').classList.add('hidden');
+      stopVoiceNarration();
     }
 
     function toggleHelpModal() {
@@ -1356,7 +1795,6 @@
       el.classList.toggle('hidden');
     }
 
-    // --- WEAPONS & COMBAT ---
     function selectWeapon(idx) {
       state.curWeapIdx = idx;
       const w = state.weapons[idx];
@@ -1491,7 +1929,6 @@
       }
     }
 
-    // --- DAMAGE & PARTICLES ---
     function spawnFloatingText(x, y, text, color) {
       state.particles.push({
         text, color,
@@ -1514,7 +1951,6 @@
       document.getElementById('countdownBanner').classList.add('hidden');
       sfxBuy();
 
-      // Victory explosion
       for (let i = 0; i < 80; i++) {
         state.particles.push({
           x: state.boss.x, y: state.boss.y,
@@ -1544,28 +1980,27 @@
       state.player.y = 440;
       state.player.vx = 0;
       state.player.vy = 0;
+      state.player.jumpsLeft = 2;
       updateVitalsUI();
     }
 
-    // --- MAIN PHYSICS & SIMULATION ---
+    // --- MAIN PHYSICS & SIMULATION WITH JUMP-THROUGH ROOFS & GRAVITY LIFTS ---
     function updatePhysics() {
       const p = state.player;
+      const prevBottom = p.y + p.height;
 
-      // Screen shake decay
       if (state.shake > 0) state.shake *= 0.9;
       if (state.shake < 0.2) state.shake = 0;
 
-      // Dash booster cooldown
       if (p.dashCooldown > 0) {
         p.dashCooldown -= 1/60;
         document.getElementById('staminaNum').textContent = `${p.dashCooldown.toFixed(1)}s`;
         document.getElementById('staminaBar').style.width = `${Math.min(100, (1 - p.dashCooldown / p.dashMaxCooldown) * 100)}%`;
       } else {
-        document.getElementById('staminaNum').textContent = "READY";
+        document.getElementById('staminaNum').textContent = p.jumpsLeft === 2 ? "2x READY" : (p.jumpsLeft === 1 ? "1x JUMP" : "AIRBORNE");
         document.getElementById('staminaBar').style.width = "100%";
       }
 
-      // Phantom Dash
       if (keys['shift'] && p.dashCooldown <= 0 && !p.isDashing) {
         p.isDashing = true;
         p.dashTimer = 0.22;
@@ -1577,11 +2012,9 @@
         p.dashTimer -= 1/60;
         p.vx = p.facingRight ? 18 : -18;
         p.vy = 0;
-
         p.afterimages.push({ x: p.x, y: p.y, alpha: 0.65 });
         if (p.dashTimer <= 0) p.isDashing = false;
       } else {
-        // Horizontal walk
         if (keys['a'] || keys['arrowleft']) {
           p.vx = -p.speed;
           p.facingRight = false;
@@ -1592,54 +2025,109 @@
           p.vx *= 0.75;
         }
 
-        // Jump
-        if ((keys[' '] || keys['w'] || keys['arrowup']) && p.isGrounded) {
-          p.vy = -p.jumpForce;
-          p.isGrounded = false;
-          playTone(330, 'sine', 0.1, 0.08);
-        }
-
-        // Gravity
         p.vy += 0.65;
         if (p.vy > 14) p.vy = 14;
       }
 
-      // X Collision with platforms
+      // 1. Horizontal platform collision (oneWay platforms DO NOT block horizontal motion!)
       p.x += p.vx;
+      p.isOnWall = false;
+
       for (let plat of state.platforms) {
+        if (plat.oneWay) continue;
         if (p.x < plat.x + plat.w && p.x + p.width > plat.x &&
             p.y < plat.y + plat.h && p.y + p.height > plat.y) {
-          if (p.vx > 0) p.x = plat.x - p.width;
-          else if (p.vx < 0) p.x = plat.x + plat.w;
+          if (p.vx > 0) {
+            p.x = plat.x - p.width;
+            p.isOnWall = true;
+          } else if (p.vx < 0) {
+            p.x = plat.x + plat.w;
+            p.isOnWall = true;
+          }
           p.vx = 0;
         }
       }
 
-      // Y Collision with platforms
-      p.y += p.vy;
-      p.isGrounded = false;
-      for (let plat of state.platforms) {
-        if (p.x < plat.x + plat.w && p.x + p.width > plat.x &&
-            p.y < plat.y + plat.h && p.y + p.height > plat.y) {
-          if (p.vy > 0) {
-            p.y = plat.y - p.height;
-            p.vy = 0;
-            p.isGrounded = true;
-          } else if (p.vy < 0) {
-            p.y = plat.y + plat.h;
-            p.vy = 0;
+      // Check wall sliding on building edges
+      for (let b of state.buildings) {
+        if (p.y + p.height > b.y + 10 && p.y < b.y + b.h) {
+          if (Math.abs((p.x + p.width) - b.x) < 8 && (keys['d'] || keys['arrowright'])) {
+            p.isOnWall = true;
+            if (p.vy > 2.5) p.vy = 2.5; // wall slide friction
+          }
+          if (Math.abs(p.x - (b.x + b.w)) < 8 && (keys['a'] || keys['arrowleft'])) {
+            p.isOnWall = true;
+            if (p.vy > 2.5) p.vy = 2.5;
           }
         }
       }
 
-      // Regenerate Shield slowly when safe
+      // 2. Vertical platform collision (Smooth Jump-Through Roofs & Catwalks)
+      p.y += p.vy;
+      p.isGrounded = false;
+
+      for (let plat of state.platforms) {
+        if (plat.oneWay) {
+          // One-way platforms (Roofs & Catwalks)
+          const isHoldingDown = keys['s'] || keys['arrowdown'];
+          if (!isHoldingDown && p.vy >= 0) {
+            if (p.x + p.width > plat.x + 4 && p.x < plat.x + plat.w - 4) {
+              if (prevBottom <= plat.y + 14 && p.y + p.height >= plat.y) {
+                p.y = plat.y - p.height;
+                p.vy = 0;
+                p.isGrounded = true;
+                p.jumpsLeft = p.maxJumps;
+              }
+            }
+          }
+        } else {
+          // Solid boundary platforms (Ground deck & world borders)
+          if (p.x < plat.x + plat.w && p.x + p.width > plat.x &&
+              p.y < plat.y + plat.h && p.y + p.height > plat.y) {
+            if (p.vy > 0) {
+              p.y = plat.y - p.height;
+              p.vy = 0;
+              p.isGrounded = true;
+              p.jumpsLeft = p.maxJumps;
+            } else if (p.vy < 0) {
+              p.y = plat.y + plat.h;
+              p.vy = 0;
+            }
+          }
+        }
+      }
+
+      // 3. Gravity Lifts (Jump-Pads beside buildings launch survivor straight up!)
+      for (let pad of state.jumpPads) {
+        if (p.x + p.width > pad.x && p.x < pad.x + pad.w &&
+            p.y + p.height >= pad.y - 12 && p.y + p.height <= pad.y + pad.h + 10) {
+          p.vy = -18.5; // High vertical boost directly onto roof!
+          p.isGrounded = false;
+          p.jumpsLeft = p.maxJumps;
+          sfxLift();
+          state.shake = 5;
+
+          // Vertical launch jet particles
+          for (let k = 0; k < 18; k++) {
+            state.particles.push({
+              x: pad.x + pad.w/2 + (Math.random() - 0.5) * 22,
+              y: pad.y,
+              vx: (Math.random() - 0.5) * 3,
+              vy: -Math.random() * 8 - 4,
+              r: 3.5, color: '#06b6d4', life: 25
+            });
+          }
+          showNotification("🚀 GRAVITY LIFT BOOST ENGAGED!");
+          break;
+        }
+      }
+
       if (p.shield < p.maxShield) {
         p.shield += 0.08;
         document.getElementById('shieldBar').style.width = `${(p.shield / p.maxShield) * 100}%`;
         document.getElementById('shieldNum').textContent = `${Math.ceil(p.shield)}%`;
       }
 
-      // Companion Combat Drone logic
       if (state.companionDrone.active) {
         const drone = state.companionDrone;
         const targetX = p.x + (p.facingRight ? -30 : 50);
@@ -1647,7 +2135,6 @@
         drone.x += (targetX - drone.x) * 0.12;
         drone.y += (targetY - drone.y) * 0.12;
 
-        // Auto-fire at closest drone
         const now = performance.now();
         if (now - drone.lastShot > 650) {
           let closest = null;
@@ -1673,7 +2160,6 @@
         }
       }
 
-      // Currency Pickups (Magnet & Collection)
       for (let i = state.pickups.length - 1; i >= 0; i--) {
         const pk = state.pickups[i];
         pk.vy += 0.2;
@@ -1682,10 +2168,8 @@
         pk.vx *= 0.96;
         pk.life--;
 
-        // Bounce on floor
         if (pk.y > 515) { pk.y = 515; pk.vy *= -0.5; }
 
-        // Magnet attraction
         const dx = (p.x + p.width/2) - pk.x;
         const dy = (p.y + p.height/2) - pk.y;
         const dist = Math.hypot(dx, dy);
@@ -1695,7 +2179,6 @@
           pk.vy += (dy / dist) * 1.8;
         }
 
-        // Collection
         if (dist < 26) {
           if (pk.type === 'credit') addCredits(pk.val, pk.x, pk.y);
           else addScrap(pk.val, pk.x, pk.y);
@@ -1706,22 +2189,20 @@
         if (pk.life <= 0) state.pickups.splice(i, 1);
       }
 
-      // Bullets Simulation & Enemy Damage
       for (let i = state.bullets.length - 1; i >= 0; i--) {
         const b = state.bullets[i];
         b.x += b.vx;
         b.y += b.vy;
         b.life--;
 
-        // Check platform collision
         for (let plat of state.platforms) {
+          if (plat.oneWay) continue;
           if (b.x > plat.x && b.x < plat.x + plat.w && b.y > plat.y && b.y < plat.y + plat.h) {
             b.life = 0;
             break;
           }
         }
 
-        // Check Crate collision
         for (let c of state.crates) {
           if (!c.opened && b.x > c.x && b.x < c.x + c.w && b.y > c.y && b.y < c.y + c.h) {
             c.hp -= b.damage;
@@ -1731,7 +2212,6 @@
           }
         }
 
-        // Check Drone collision
         for (let d of state.drones) {
           if (Math.hypot(d.x - b.x, d.y - b.y) < d.r + 5) {
             d.hp -= b.damage;
@@ -1744,7 +2224,6 @@
           }
         }
 
-        // Check Boss collision
         const boss = state.boss;
         if (boss.active && !boss.defeated && Math.hypot(boss.x - b.x, boss.y - b.y) < boss.w / 2) {
           state.totalDamageDealt += b.damage;
@@ -1770,13 +2249,11 @@
         if (b.life <= 0) state.bullets.splice(i, 1);
       }
 
-      // Drone simulation & Enemy Spitting
       for (let i = state.drones.length - 1; i >= 0; i--) {
         const d = state.drones[i];
         d.x += d.vx;
         if (Math.random() < 0.015) d.vx *= -1;
 
-        // Spit ranged projectiles if spitter or sentinel
         if ((d.type === 'spitter' || d.type === 'sentinel') && Math.random() < 0.02) {
           const dx = (p.x + p.width/2) - d.x;
           const dy = (p.y + p.height/2) - d.y;
@@ -1792,12 +2269,10 @@
           });
         }
 
-        // Damage player on touch
         if (Math.hypot(d.x - (p.x + p.width/2), d.y - (p.y + p.height/2)) < d.r + 14 && !p.isDashing) {
           damagePlayer(d.isMiniBoss ? 24 : 12);
         }
 
-        // Enemy death & loot drop
         if (d.hp <= 0) {
           state.kills++;
           spawnLootDrop(d.x, d.y, d.isMiniBoss ? 8 : 3);
@@ -1813,7 +2288,6 @@
         }
       }
 
-      // Boss activation in Level 3
       if (state.currentLevel === 3 && p.x > 1500 && !state.boss.active && !state.boss.defeated) {
         state.boss.active = true;
         document.getElementById('bossHud').style.opacity = '1';
@@ -1842,14 +2316,12 @@
           damagePlayer(b.phase === 4 ? 35 : 22);
         }
 
-        // Update Boss HUD
         document.getElementById('bossArmorBar').style.width = `${(b.armor / b.maxArmor) * 100}%`;
         document.getElementById('bossHpBar').style.width = `${(b.hp / b.maxHp) * 100}%`;
         document.getElementById('bossHpText').textContent = `${Math.round((b.hp / b.maxHp) * 100)}%`;
         document.getElementById('bossPhaseBadge').textContent = b.phase === 4 ? 'VOID ENRAGED' : (b.phase === 3 ? 'CORE EXPOSED' : `PHASE ${b.phase}`);
       }
 
-      // Camera Follow with screen shake
       const shakeX = (Math.random() - 0.5) * state.shake;
       const shakeY = (Math.random() - 0.5) * state.shake;
       const targetCamX = p.x + p.width/2 - width / 2;
@@ -1883,7 +2355,6 @@
       }
     }
 
-    // --- CANVAS RENDERING PIPELINE ---
     function render() {
       ctx.clearRect(0, 0, width, height);
 
@@ -1903,32 +2374,27 @@
         ctx.fillRect(sx, sy, 1.5, 1.5);
       }
 
-      // 2. BUILDINGS ARCHITECTURE (Detailed Sci-Fi Facades & Neon Signs)
+      // 2. BUILDINGS (Facades, Neon Signs, Fans, Doors)
       for (let b of state.buildings) {
         const bx = b.x - camX;
         const by = b.y - camY;
 
-        // Building Main Concrete/Carbon Bulkhead
         ctx.fillStyle = '#0b1322';
         ctx.fillRect(bx, by, b.w, b.h);
 
-        // Building Outline & Tech Paneling
         ctx.strokeStyle = '#1e293b';
         ctx.lineWidth = 3;
         ctx.strokeRect(bx, by, b.w, b.h);
 
-        // Grid/Window Patterns
         ctx.fillStyle = b.color + '18';
         ctx.fillRect(bx + 20, by + 60, b.w - 40, b.h - 130);
 
-        // Neon Sign Box above entrance
         ctx.fillStyle = '#070d18';
         ctx.fillRect(bx + 15, by + 12, b.w - 30, 36);
         ctx.strokeStyle = b.color;
         ctx.lineWidth = 1.5;
         ctx.strokeRect(bx + 15, by + 12, b.w - 30, 36);
 
-        // Neon Sign Text with glow
         ctx.fillStyle = b.color;
         ctx.font = 'bold 12px monospace';
         ctx.fillText(b.name, bx + 25, by + 30);
@@ -1936,7 +2402,6 @@
         ctx.fillStyle = '#94a3b8';
         ctx.fillText(b.sub, bx + 25, by + 42);
 
-        // Animated Ventilation Fan on Roof
         if (b.fan) {
           b.fan.angle += 0.06;
           const fx = b.fan.x - camX;
@@ -1958,7 +2423,6 @@
           ctx.restore();
         }
 
-        // Entrance Doorframe
         if (b.door) {
           const dx = b.door.x - camX;
           const dy = b.door.y - camY;
@@ -1968,34 +2432,54 @@
           ctx.lineWidth = 2;
           ctx.strokeRect(dx, dy, b.door.w, b.door.h);
 
-          // Door access prompt
           ctx.fillStyle = '#f8fafc';
           ctx.font = 'bold 9px monospace';
           ctx.fillText(b.door.label, dx - 15, dy - 8);
         }
       }
 
-      // 3. Platforms & Floors
+      // 3. Platforms & Rooftops
       for (let plat of state.platforms) {
         const sx = plat.x - camX;
         const sy = plat.y - camY;
 
-        ctx.fillStyle = '#0f172a';
+        ctx.fillStyle = plat.oneWay ? '#131e36' : '#0f172a';
         ctx.fillRect(sx, sy, plat.w, plat.h);
 
-        ctx.strokeStyle = '#1e293b';
+        ctx.strokeStyle = plat.oneWay ? '#334155' : '#1e293b';
         ctx.lineWidth = 2;
         ctx.strokeRect(sx, sy, plat.w, plat.h);
 
-        ctx.strokeStyle = '#38bdf8';
-        ctx.lineWidth = 1.5;
+        // Neon runner on top
+        ctx.strokeStyle = plat.oneWay ? '#38bdf8' : '#0284c7';
+        ctx.lineWidth = plat.oneWay ? 2.5 : 1.5;
         ctx.beginPath();
         ctx.moveTo(sx, sy);
         ctx.lineTo(sx + plat.w, sy);
         ctx.stroke();
       }
 
-      // 4. Loot Crates
+      // 4. Vertical Gravity Lifts (Jump Pads with Animated Neon Chevrons)
+      const liftAnimTime = performance.now() * 0.005;
+      for (let pad of state.jumpPads) {
+        const px = pad.x - camX;
+        const py = pad.y - camY;
+
+        // Pad Base
+        ctx.fillStyle = '#082f49';
+        ctx.fillRect(px, py, pad.w, pad.h);
+        ctx.strokeStyle = '#06b6d4';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(px, py, pad.w, pad.h);
+
+        // Animated upward arrows
+        ctx.fillStyle = '#22d3ee';
+        ctx.font = 'bold 10px monospace';
+        const bounce = Math.sin(liftAnimTime * 2) * 3;
+        ctx.fillText('▲ LIFT ▲', px - 4, py - 4 - bounce);
+      }
+
+      // 5. Loot Crates
       for (let c of state.crates) {
         if (c.opened) continue;
         const cx = c.x - camX;
@@ -2012,7 +2496,7 @@
         ctx.fillText("CRATE", cx + 2, cy + 18);
       }
 
-      // 5. Currency Pickups (Floating Diamonds with Glow)
+      // 6. Currency Pickups
       for (let pk of state.pickups) {
         const px = pk.x - camX;
         const py = pk.y - camY;
@@ -2033,7 +2517,7 @@
         ctx.restore();
       }
 
-      // 6. Interactive Stations / Terminals
+      // 7. Interactive Stations
       for (let term of state.interactables) {
         const tx = term.x - camX;
         const ty = term.y - camY;
@@ -2054,7 +2538,7 @@
         ctx.fillText(term.title, tx - 45, ty - 24);
       }
 
-      // 7. Companion Combat Drone
+      // 8. Companion Combat Drone
       if (state.companionDrone.active) {
         const drX = state.companionDrone.x - camX;
         const drY = state.companionDrone.y - camY;
@@ -2069,14 +2553,13 @@
         ctx.arc(drX, drY, 4, 0, Math.PI * 2);
         ctx.fill();
 
-        // Engine glow
         ctx.fillStyle = 'rgba(56, 189, 248, 0.4)';
         ctx.beginPath();
         ctx.arc(drX, drY + 8, 4, 0, Math.PI * 2);
         ctx.fill();
       }
 
-      // 8. Drones & Sentinels
+      // 9. Drones & Sentinels
       for (let d of state.drones) {
         const dx = d.x - camX;
         const dy = d.y - camY;
@@ -2091,14 +2574,13 @@
         ctx.arc(dx, dy, d.r * 0.4, 0, Math.PI * 2);
         ctx.fill();
 
-        // HP bar above drone
         ctx.fillStyle = '#000';
         ctx.fillRect(dx - 18, dy - d.r - 12, 36, 4);
         ctx.fillStyle = '#22c55e';
         ctx.fillRect(dx - 18, dy - d.r - 12, (d.hp / d.maxHp) * 36, 4);
       }
 
-      // 9. Boss: Bio-Synthetic Archon Prime
+      // 10. Boss: Bio-Synthetic Archon Prime
       const b = state.boss;
       if (b.active && !b.defeated) {
         const bx = b.x - camX;
@@ -2127,7 +2609,7 @@
         ctx.restore();
       }
 
-      // 10. Player Character & Afterimages
+      // 11. Player Character & Afterimages
       for (let i = state.player.afterimages.length - 1; i >= 0; i--) {
         const img = state.player.afterimages[i];
         img.alpha -= 0.05;
@@ -2158,7 +2640,7 @@
       ctx.lineTo(px + p.width/2 + Math.cos(aimAngle) * 22, py + p.height/2 + Math.sin(aimAngle) * 22);
       ctx.stroke();
 
-      // 11. Bullets & Projectiles
+      // 12. Bullets
       for (let bullet of state.bullets) {
         ctx.fillStyle = bullet.color;
         ctx.beginPath();
@@ -2166,7 +2648,7 @@
         ctx.fill();
       }
 
-      // 12. Floating Numbers & Slash Particle Effects
+      // 13. Particles
       for (let i = state.particles.length - 1; i >= 0; i--) {
         const pt = state.particles[i];
         pt.life--;
@@ -2199,14 +2681,12 @@
       }
     }
 
-    // --- MAIN ANIMATION LOOP ---
     function loop() {
       updatePhysics();
       render();
       requestAnimationFrame(loop);
     }
 
-    // Start with Sector 01
     initLevel(1);
     requestAnimationFrame(loop);
   </script>
