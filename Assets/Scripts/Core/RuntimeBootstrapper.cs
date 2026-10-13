@@ -56,27 +56,40 @@ namespace OblivionsEdge.Core
 
         private static void EnsureEnvironment()
         {
-            if (GameObject.Find("Environment_Floor") != null) return;
+            if (GameObject.Find("Platform_Left") != null) return;
 
-            GameObject envRoot = new GameObject("Environment_Deck");
+            GameObject envRoot = GameObject.Find("Environment_Deck");
+            if (envRoot == null)
+            {
+                envRoot = new GameObject("Environment_Deck");
+            }
 
-            // Main Deck Floor
-            CreatePlatform(envRoot.transform, "Environment_Floor", new Vector2(0f, -3.8f), new Vector2(36f, 1.2f), new Color(0.12f, 0.16f, 0.22f));
+            // Main Deck Floor (ensure present)
+            if (GameObject.Find("Environment_Floor") == null)
+            {
+                CreatePlatform(envRoot.transform, "Environment_Floor", new Vector2(0f, -3.8f), new Vector2(36f, 1.2f), new Color(0.12f, 0.16f, 0.22f));
+            }
 
-            // Left Elevated Platform
-            CreatePlatform(envRoot.transform, "Platform_Left", new Vector2(-7.5f, -1.2f), new Vector2(6f, 0.5f), new Color(0.16f, 0.22f, 0.3f));
+            // Left step rises 0.75 units above the main deck for reliable short jumps.
+            CreatePlatform(envRoot.transform, "Platform_Left", new Vector2(-7.5f, -2.7f), new Vector2(6f, 0.5f), new Color(0.16f, 0.22f, 0.3f));
 
-            // Right Elevated Platform
-            CreatePlatform(envRoot.transform, "Platform_Right", new Vector2(7.5f, -1.2f), new Vector2(6f, 0.5f), new Color(0.16f, 0.22f, 0.3f));
+            // Right step matches the left step's 0.75-unit rise.
+            CreatePlatform(envRoot.transform, "Platform_Right", new Vector2(7.5f, -2.7f), new Vector2(6f, 0.5f), new Color(0.16f, 0.22f, 0.3f));
 
-            // High Center Observation Reactor Platform
-            CreatePlatform(envRoot.transform, "Platform_Reactor", new Vector2(0f, 1.2f), new Vector2(5f, 0.5f), new Color(0.2f, 0.28f, 0.38f));
+            // Reactor step rises 0.9 units above the side platforms.
+            CreatePlatform(envRoot.transform, "Platform_Reactor", new Vector2(0f, -1.8f), new Vector2(5f, 0.5f), new Color(0.2f, 0.28f, 0.38f));
 
             // Left Wall Barrier
-            CreatePlatform(envRoot.transform, "Wall_Left", new Vector2(-18f, 2f), new Vector2(1.2f, 14f), new Color(0.08f, 0.1f, 0.15f));
+            if (GameObject.Find("Wall_Left") == null)
+            {
+                CreatePlatform(envRoot.transform, "Wall_Left", new Vector2(-18f, 2f), new Vector2(1.2f, 14f), new Color(0.08f, 0.1f, 0.15f));
+            }
 
             // Right Wall Barrier
-            CreatePlatform(envRoot.transform, "Wall_Right", new Vector2(18f, 2f), new Vector2(1.2f, 14f), new Color(0.08f, 0.1f, 0.15f));
+            if (GameObject.Find("Wall_Right") == null)
+            {
+                CreatePlatform(envRoot.transform, "Wall_Right", new Vector2(18f, 2f), new Vector2(1.2f, 14f), new Color(0.08f, 0.1f, 0.15f));
+            }
         }
 
         private static void CreatePlatform(Transform parent, string name, Vector2 position, Vector2 size, Color color)
@@ -212,9 +225,9 @@ namespace OblivionsEdge.Core
 
             GameObject targetsRoot = new GameObject("Target_Drones");
 
-            CreateTargetDrone(targetsRoot.transform, "BioDrone_Alpha", new Vector3(7.5f, 0.2f, 0f));
-            CreateTargetDrone(targetsRoot.transform, "BioDrone_Beta", new Vector3(-7.5f, 0.2f, 0f));
-            CreateTargetDrone(targetsRoot.transform, "BioDrone_Central", new Vector3(0f, 2.6f, 0f));
+            CreateTargetDrone(targetsRoot.transform, "BioDrone_Alpha", new Vector3(7.5f, -0.7f, 0f));
+            CreateTargetDrone(targetsRoot.transform, "BioDrone_Beta", new Vector3(-7.5f, -0.7f, 0f));
+            CreateTargetDrone(targetsRoot.transform, "BioDrone_Central", new Vector3(0f, 0.8f, 0f));
         }
 
         private static void CreateTargetDrone(Transform parent, string name, Vector3 position)
