@@ -533,7 +533,8 @@
         width: 24,
         height: 48,
         speed: 5.2,
-        jumpForce: 13.5,
+        // Higher clearance lets the player reach the elevated catwalks and roofs.
+        jumpForce: 16.5,
         isGrounded: false,
         dashTimer: 0,
         dashCooldown: 0,
@@ -814,6 +815,7 @@
           { x: 2560, y: 0, w: 40, h: 600 },
           { x: 400, y: 220, w: 460, h: 20, label: "Forge Roof" },
           { x: 920, y: 360, w: 200, h: 18 },
+          { x: 1120, y: 290, w: 130, h: 18 },
           { x: 1250, y: 160, w: 900, h: 20, label: "Citadel Spires" },
           { x: 1450, y: 350, w: 220, h: 18 },
           { x: 1800, y: 350, w: 220, h: 18 }
