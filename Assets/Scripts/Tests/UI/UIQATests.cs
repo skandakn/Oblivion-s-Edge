@@ -86,7 +86,7 @@ namespace OblivionsEdge.Tests.UI
         public void SimulateEnraged()         => OnBossEnraged?.Invoke();
     }
 
-    internal sealed class StubArmorSource : IBossArmorSource
+    internal sealed class StubArmorSource : OblivionsEdge.UI.IBossArmorSource, OblivionsEdge.Boss.IBossArmorSource
     {
         public float CurrentArmor { get; set; } = 200f;
         public float MaxArmor     { get; set; } = 200f;
