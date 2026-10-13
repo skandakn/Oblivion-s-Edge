@@ -1,0 +1,823 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>OBLIVION'S EDGE — Local Interactive Simulation</title>
+  <script src="https://www.gstatic.com/antigravity/web/dev/tailwindcss.min.js"></script>
+  <style>
+    body {
+      margin: 0;
+      background: #06090e;
+      color: #e2e8f0;
+      font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      overflow: hidden;
+      user-select: none;
+    }
+    canvas {
+      display: block;
+      background: #070b12;
+      cursor: crosshair;
+    }
+    .hud-bar {
+      transition: width 0.15s ease-out;
+    }
+    .crt-overlay {
+      pointer-events: none;
+      background: radial-gradient(circle at center, transparent 60%, rgba(0,0,0,0.6) 100%),
+                  linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%);
+      background-size: 100% 100%, 100% 4px;
+    }
+  </style>
+</head>
+<body class="w-screen h-screen relative">
+  <!-- 2D Canvas Viewport -->
+  <canvas id="gameCanvas" class="w-full h-full"></canvas>
+
+  <!-- CRT Ambient Vignette -->
+  <div class="crt-overlay absolute inset-0"></div>
+
+  <!-- TOP HUD: Boss Encounter Bar & Mission Status -->
+  <div class="absolute top-4 left-1/2 -translate-x-1/2 w-full max-w-xl px-4 flex flex-col items-center pointer-events-none">
+    <div id="bossHud" class="w-full bg-slate-900/90 border border-red-500/50 rounded-lg p-2.5 shadow-2xl backdrop-blur-md mb-2">
+      <div class="flex justify-between items-center text-xs font-semibold mb-1">
+        <span class="text-red-400 tracking-wider flex items-center gap-1.5">
+          <span class="w-2 h-2 rounded-full bg-red-500 animate-ping"></span>
+          BIO-SYNTHETIC ARCHON <span id="bossPhaseTag" class="text-[10px] bg-red-950 text-red-300 px-1.5 py-0.5 rounded border border-red-700">PHASE 1</span>
+        </span>
+        <span id="bossHpText" class="text-slate-300 font-mono">1000 / 1000</span>
+      </div>
+      <div class="w-full h-3 bg-slate-950 rounded-full overflow-hidden border border-slate-800">
+        <div id="bossHpBar" class="hud-bar h-full bg-gradient-to-r from-red-600 to-rose-400" style="width: 100%"></div>
+      </div>
+    </div>
+    <div id="gameNotification" class="bg-cyan-950/80 border border-cyan-500/40 text-cyan-200 text-xs px-3 py-1 rounded shadow-md backdrop-blur opacity-0 transition-opacity duration-300">
+      System Ready
+    </div>
+  </div>
+
+  <!-- BOTTOM-LEFT HUD: Player Vitals (OblivionsEdge.Player / IPlayerStats) -->
+  <div class="absolute bottom-5 left-5 w-64 bg-slate-900/85 border border-slate-700/60 rounded-xl p-3.5 backdrop-blur-md shadow-2xl pointer-events-none space-y-2">
+    <div class="flex items-center justify-between border-b border-slate-800 pb-1.5 mb-2">
+      <span class="text-xs font-bold tracking-wider text-slate-300">SURVIVOR STATUS</span>
+      <span id="gameTime" class="text-[11px] font-mono text-cyan-400">00:00</span>
+    </div>
+
+    <!-- Health -->
+    <div>
+      <div class="flex justify-between text-[11px] text-slate-400 mb-0.5 font-medium">
+        <span>INTEGRITY (HP)</span>
+        <span id="hpVal" class="font-mono text-emerald-400">100 / 100</span>
+      </div>
+      <div class="w-full h-2 bg-slate-950 rounded-full overflow-hidden border border-slate-800">
+        <div id="hpBar" class="hud-bar h-full bg-emerald-500" style="width: 100%"></div>
+      </div>
+    </div>
+
+    <!-- Stamina -->
+    <div>
+      <div class="flex justify-between text-[11px] text-slate-400 mb-0.5 font-medium">
+        <span>STAMINA (DASH)</span>
+        <span id="staminaVal" class="font-mono text-amber-400">100 / 100</span>
+      </div>
+      <div class="w-full h-2 bg-slate-950 rounded-full overflow-hidden border border-slate-800">
+        <div id="staminaBar" class="hud-bar h-full bg-amber-500" style="width: 100%"></div>
+      </div>
+    </div>
+
+    <!-- Oxygen -->
+    <div>
+      <div class="flex justify-between text-[11px] text-slate-400 mb-0.5 font-medium">
+        <span>OXYGEN LEVEL</span>
+        <span id="o2Val" class="font-mono text-cyan-400">100%</span>
+      </div>
+      <div class="w-full h-2 bg-slate-950 rounded-full overflow-hidden border border-slate-800">
+        <div id="o2Bar" class="hud-bar h-full bg-cyan-500" style="width: 100%"></div>
+      </div>
+    </div>
+
+    <!-- Sanity -->
+    <div>
+      <div class="flex justify-between text-[11px] text-slate-400 mb-0.5 font-medium">
+        <span>NEURAL SANITY</span>
+        <span id="sanityVal" class="font-mono text-purple-400">100%</span>
+      </div>
+      <div class="w-full h-2 bg-slate-950 rounded-full overflow-hidden border border-slate-800">
+        <div id="sanityBar" class="hud-bar h-full bg-purple-500" style="width: 100%"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- BOTTOM-RIGHT HUD: Weapon & Ammo (OblivionsEdge.Weapons / IWeapon) -->
+  <div class="absolute bottom-5 right-5 w-60 bg-slate-900/85 border border-slate-700/60 rounded-xl p-3.5 backdrop-blur-md shadow-2xl pointer-events-none text-right">
+    <div class="text-[11px] text-slate-400 uppercase tracking-widest font-semibold" id="weaponName">PLASMA CUTTER [MK-I]</div>
+    <div class="flex items-baseline justify-end gap-1 my-1">
+      <span id="ammoCurrent" class="text-4xl font-extrabold font-mono text-cyan-400 leading-none">12</span>
+      <span class="text-slate-500 text-lg font-mono">/</span>
+      <span id="ammoReserve" class="text-slate-400 font-mono text-lg">48</span>
+    </div>
+    <div id="reloadIndicator" class="text-xs font-semibold text-amber-400 tracking-wider h-4">READY</div>
+    <div class="text-[10px] text-slate-500 mt-1 border-t border-slate-800 pt-1">
+      [LMB] Fire &bull; [R] Reload &bull; [1/2] Swap Weapon
+    </div>
+  </div>
+
+  <!-- INTERACTION PROMPT MODAL (OblivionsEdge.Core / IInteractable) -->
+  <div id="interactPrompt" class="absolute top-2/3 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-slate-900/90 border border-amber-500/70 text-amber-200 px-4 py-2 rounded-lg font-mono text-xs shadow-xl backdrop-blur hidden pointer-events-none flex items-center gap-2">
+    <span class="bg-amber-500 text-slate-950 font-bold px-1.5 py-0.5 rounded text-[10px]">E</span>
+    <span id="promptText">Reroute Reactor Power Grid</span>
+  </div>
+
+  <!-- PUZZLE TERMINAL OVERLAY (OblivionsEdge.Puzzles / IPuzzleController) -->
+  <div id="puzzleModal" class="absolute inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center hidden z-50">
+    <div class="bg-slate-900 border border-cyan-500/60 rounded-2xl p-6 w-96 shadow-2xl text-slate-200">
+      <div class="flex justify-between items-center border-b border-slate-800 pb-2 mb-4">
+        <h3 class="text-sm font-bold text-cyan-400 flex items-center gap-2">
+          <span class="w-2 h-2 rounded-full bg-cyan-400"></span>
+          SUB-LEVEL 4 POWER REROUTE
+        </h3>
+        <button onclick="togglePuzzle(false)" class="text-slate-400 hover:text-white text-xs">&times; ESC</button>
+      </div>
+      <p class="text-xs text-slate-400 mb-4">Align the circuit conduits to restore emergency airlock power:</p>
+      <div class="grid grid-cols-3 gap-3 mb-5" id="puzzleGrid">
+        <!-- 3x3 Puzzle Nodes -->
+      </div>
+      <div class="flex justify-between items-center text-xs">
+        <span id="puzzleStatus" class="text-amber-400">CIRCUIT INCOMPLETE</span>
+        <button onclick="resetPuzzle()" class="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded text-xs border border-slate-700">RESET</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- INVENTORY / CRAFTING MODAL (OblivionsEdge.Inventory & Crafting) -->
+  <div id="inventoryModal" class="absolute inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center hidden z-50">
+    <div class="bg-slate-900 border border-slate-700 rounded-2xl p-6 w-[30rem] shadow-2xl text-slate-200">
+      <div class="flex justify-between items-center border-b border-slate-800 pb-2 mb-4">
+        <h3 class="text-sm font-bold text-slate-200">SURVIVOR BACKPACK & WORKBENCH</h3>
+        <button onclick="toggleInventory(false)" class="text-slate-400 hover:text-white text-xs">&times; TAB</button>
+      </div>
+      <div class="grid grid-cols-2 gap-4">
+        <div>
+          <h4 class="text-xs font-semibold text-slate-400 mb-2">INVENTORY SLOTS</h4>
+          <div class="grid grid-cols-3 gap-2" id="inventorySlots"></div>
+        </div>
+        <div>
+          <h4 class="text-xs font-semibold text-slate-400 mb-2">FABRICATION RECIPES</h4>
+          <div class="space-y-2" id="craftingRecipes">
+            <div class="bg-slate-950 p-2.5 rounded border border-slate-800 hover:border-cyan-500/50 cursor-pointer text-xs" onclick="craftItem('medkit')">
+              <div class="font-bold text-emerald-400">Nano-Medkit (+50 HP)</div>
+              <div class="text-[10px] text-slate-400">Cost: 2 Scrap, 1 Bio-Gel</div>
+            </div>
+            <div class="bg-slate-950 p-2.5 rounded border border-slate-800 hover:border-cyan-500/50 cursor-pointer text-xs" onclick="craftItem('plasma_cell')">
+              <div class="font-bold text-cyan-400">Plasma Cell (+24 Ammo)</div>
+              <div class="text-[10px] text-slate-400">Cost: 3 Scrap, 1 Energy Cell</div>
+            </div>
+            <div class="bg-slate-950 p-2.5 rounded border border-slate-800 hover:border-cyan-500/50 cursor-pointer text-xs" onclick="craftItem('o2_canister')">
+              <div class="font-bold text-sky-400">O2 Canister (+40% Air)</div>
+              <div class="text-[10px] text-slate-400">Cost: 1 Scrap, 1 Filter</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CONTROL HELP BAR -->
+  <div class="absolute bottom-2 left-1/2 -translate-x-1/2 text-[11px] text-slate-500 font-mono tracking-wide pointer-events-none">
+    WASD: Move &bull; MOUSE: Aim &bull; LMB: Fire &bull; SHIFT: Dash &bull; E: Interact &bull; TAB: Inventory &bull; C: Craft &bull; 1/2: Weapon
+  </div>
+
+  <!-- GAME ENGINE JAVASCRIPT -->
+  <script>
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+
+    // Resize canvas
+    function resize() {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    }
+    window.addEventListener('resize', resize);
+    resize();
+
+    // Input States
+    const keys = {};
+    const mouse = { x: canvas.width / 2, y: canvas.height / 2, down: false };
+
+    window.addEventListener('keydown', e => {
+      keys[e.key.toLowerCase()] = true;
+      if (e.key === 'Tab') { e.preventDefault(); toggleInventory(); }
+      if (e.key.toLowerCase() === 'e') handleInteraction();
+      if (e.key.toLowerCase() === 'r') reloadWeapon();
+      if (e.key.toLowerCase() === 'c') toggleInventory();
+      if (e.key === '1') selectWeapon(0);
+      if (e.key === '2') selectWeapon(1);
+      if (e.key === 'Escape') { togglePuzzle(false); toggleInventory(false); }
+    });
+
+    window.addEventListener('keyup', e => {
+      keys[e.key.toLowerCase()] = false;
+    });
+
+    window.addEventListener('mousemove', e => {
+      mouse.x = e.clientX;
+      mouse.y = e.clientY;
+    });
+
+    window.addEventListener('mousedown', e => {
+      if (e.button === 0) mouse.down = true;
+    });
+
+    window.addEventListener('mouseup', e => {
+      if (e.button === 0) mouse.down = false;
+    });
+
+    // Audio SFX synthesis using Web Audio API
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    function playBeep(freq, type = 'sine', duration = 0.08, gainVal = 0.08) {
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.type = type;
+      osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+      gain.gain.setValueAtTime(gainVal, audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.start();
+      osc.stop(audioCtx.currentTime + duration);
+    }
+
+    // GAME STATE
+    const state = {
+      player: {
+        x: canvas.width / 2,
+        y: canvas.height / 2 + 100,
+        radius: 16,
+        speed: 3.2,
+        dashCooldown: 0,
+        hp: 100,
+        maxHp: 100,
+        stamina: 100,
+        maxStamina: 100,
+        oxygen: 100,
+        sanity: 100
+      },
+      weapons: [
+        { name: "PLASMA CUTTER [MK-I]", clip: 12, maxClip: 12, reserve: 48, fireRate: 180, lastFired: 0, bulletSpeed: 14, damage: 35, spread: 0.05, color: '#38bdf8' },
+        { name: "HEAVY SCATTERGUN", clip: 6, maxClip: 6, reserve: 24, fireRate: 650, lastFired: 0, bulletSpeed: 11, damage: 18, spread: 0.35, count: 5, color: '#f59e0b' }
+      ],
+      currentWeaponIdx: 0,
+      isReloading: false,
+      bullets: [],
+      particles: [],
+      boss: {
+        x: canvas.width / 2,
+        y: canvas.height / 2 - 120,
+        radius: 42,
+        hp: 1000,
+        maxHp: 1000,
+        phase: 1,
+        enraged: false,
+        angle: 0,
+        attackTimer: 0
+      },
+      drones: [
+        { x: canvas.width / 2 - 200, y: canvas.height / 2, radius: 14, hp: 60, maxHp: 60, speed: 1.2 },
+        { x: canvas.width / 2 + 200, y: canvas.height / 2, radius: 14, hp: 60, maxHp: 60, speed: 1.2 }
+      ],
+      terminals: [
+        { id: "power_grid", x: canvas.width / 2 - 160, y: canvas.height / 2 + 200, radius: 24, name: "Power Reroute Terminal", solved: false }
+      ],
+      inventory: [
+        { id: "scrap", name: "Metal Scrap", qty: 6, icon: "🔩" },
+        { id: "biogel", name: "Bio-Gel", qty: 2, icon: "🧪" },
+        { id: "energy_cell", name: "Energy Cell", qty: 3, icon: "🔋" },
+        { id: "filter", name: "O2 Filter", qty: 1, icon: "💨" }
+      ],
+      secondsElapsed: 0
+    };
+
+    setInterval(() => {
+      state.secondsElapsed++;
+      const m = Math.floor(state.secondsElapsed / 60).toString().padStart(2, '0');
+      const s = (state.secondsElapsed % 60).toString().padStart(2, '0');
+      document.getElementById('gameTime').textContent = `${m}:${s}`;
+
+      // Oxygen slow consumption
+      state.player.oxygen = Math.max(0, state.player.oxygen - 0.4);
+      if (state.player.oxygen <= 0) {
+        state.player.hp = Math.max(0, state.player.hp - 2);
+      }
+    }, 1000);
+
+    // NOTIFICATION
+    function notify(msg) {
+      const el = document.getElementById('gameNotification');
+      el.textContent = msg;
+      el.style.opacity = '1';
+      setTimeout(() => el.style.opacity = '0', 2500);
+    }
+
+    // WEAPON MECHANICS
+    function selectWeapon(idx) {
+      state.currentWeaponIdx = idx;
+      state.isReloading = false;
+      document.getElementById('weaponName').textContent = state.weapons[idx].name;
+      document.getElementById('reloadIndicator').textContent = "READY";
+      playBeep(440, 'triangle', 0.1);
+      updateHUD();
+    }
+
+    function reloadWeapon() {
+      const w = state.weapons[state.currentWeaponIdx];
+      if (state.isReloading || w.clip === w.maxClip || w.reserve <= 0) return;
+      state.isReloading = true;
+      document.getElementById('reloadIndicator').textContent = "RELOADING...";
+      playBeep(300, 'sine', 0.2);
+      setTimeout(() => {
+        const needed = w.maxClip - w.clip;
+        const available = Math.min(needed, w.reserve);
+        w.clip += available;
+        w.reserve -= available;
+        state.isReloading = false;
+        document.getElementById('reloadIndicator').textContent = "READY";
+        playBeep(600, 'square', 0.1);
+        updateHUD();
+      }, 1200);
+    }
+
+    function fireWeapon() {
+      const w = state.weapons[state.currentWeaponIdx];
+      const now = performance.now();
+      if (state.isReloading || now - w.lastFired < w.fireRate) return;
+
+      if (w.clip <= 0) {
+        playBeep(180, 'square', 0.05); // Dry fire
+        document.getElementById('reloadIndicator').textContent = "EMPTY - PRESS [R]";
+        return;
+      }
+
+      w.clip--;
+      w.lastFired = now;
+      updateHUD();
+
+      // Screen recoil
+      const angle = Math.atan2(mouse.y - state.player.y, mouse.x - state.player.x);
+      const count = w.count || 1;
+
+      for (let i = 0; i < count; i++) {
+        const spreadOffset = (Math.random() - 0.5) * w.spread;
+        const bulletAngle = angle + spreadOffset;
+        state.bullets.push({
+          x: state.player.x + Math.cos(angle) * 16,
+          y: state.player.y + Math.sin(angle) * 16,
+          vx: Math.cos(bulletAngle) * w.bulletSpeed,
+          vy: Math.sin(bulletAngle) * w.bulletSpeed,
+          damage: w.damage,
+          color: w.color,
+          isPlayer: true
+        });
+      }
+
+      playBeep(w.color === '#38bdf8' ? 520 : 280, 'sawtooth', 0.12, 0.1);
+    }
+
+    // PUZZLE SYSTEM
+    let puzzleNodes = [0, 1, 0, 1, 0, 1, 0, 0, 1];
+    function initPuzzle() {
+      const grid = document.getElementById('puzzleGrid');
+      grid.innerHTML = '';
+      puzzleNodes.forEach((active, i) => {
+        const btn = document.createElement('div');
+        btn.className = `h-16 flex items-center justify-center font-mono font-bold rounded-lg cursor-pointer border text-xs transition-colors ${active ? 'bg-cyan-500/20 border-cyan-400 text-cyan-200' : 'bg-slate-950 border-slate-800 text-slate-600'}`;
+        btn.textContent = active ? 'ONLINE' : 'BYPASS';
+        btn.onclick = () => {
+          puzzleNodes[i] = puzzleNodes[i] ? 0 : 1;
+          playBeep(active ? 300 : 700, 'sine', 0.05);
+          initPuzzle();
+          checkPuzzle();
+        };
+        grid.appendChild(btn);
+      });
+    }
+
+    function checkPuzzle() {
+      const allActive = puzzleNodes.every(v => v === 1);
+      const statusEl = document.getElementById('puzzleStatus');
+      if (allActive) {
+        statusEl.textContent = "CIRCUIT STABILIZED — POWER RESTORED!";
+        statusEl.className = "text-emerald-400 font-bold";
+        state.terminals[0].solved = true;
+        playBeep(880, 'triangle', 0.4);
+        notify("Power Grid Restored! Station lights online.");
+        setTimeout(() => togglePuzzle(false), 1200);
+      } else {
+        statusEl.textContent = "CIRCUIT INCOMPLETE";
+        statusEl.className = "text-amber-400";
+      }
+    }
+
+    function resetPuzzle() {
+      puzzleNodes = [0, 1, 0, 1, 0, 1, 0, 0, 1];
+      initPuzzle();
+      checkPuzzle();
+    }
+
+    function togglePuzzle(show) {
+      const el = document.getElementById('puzzleModal');
+      const isVisible = show !== undefined ? show : el.classList.contains('hidden');
+      if (isVisible) {
+        initPuzzle();
+        el.classList.remove('hidden');
+      } else {
+        el.classList.add('hidden');
+      }
+    }
+
+    // INVENTORY & CRAFTING
+    function toggleInventory(show) {
+      const el = document.getElementById('inventoryModal');
+      const isVisible = show !== undefined ? show : el.classList.contains('hidden');
+      if (isVisible) {
+        renderInventory();
+        el.classList.remove('hidden');
+      } else {
+        el.classList.add('hidden');
+      }
+    }
+
+    function renderInventory() {
+      const grid = document.getElementById('inventorySlots');
+      grid.innerHTML = '';
+      for (let i = 0; i < 9; i++) {
+        const item = state.inventory[i];
+        const slot = document.createElement('div');
+        slot.className = "h-16 bg-slate-950 border border-slate-800 rounded-lg flex flex-col items-center justify-center text-xs p-1";
+        if (item) {
+          slot.innerHTML = `<span class="text-lg">${item.icon}</span><span class="text-[10px] text-slate-300 font-semibold truncate">${item.name}</span><span class="text-[9px] text-cyan-400 font-mono">x${item.qty}</span>`;
+        } else {
+          slot.innerHTML = `<span class="text-slate-800 text-[10px]">Empty</span>`;
+        }
+        grid.appendChild(slot);
+      }
+    }
+
+    function craftItem(recipe) {
+      if (recipe === 'medkit') {
+        const scrap = state.inventory.find(i => i.id === 'scrap');
+        const biogel = state.inventory.find(i => i.id === 'biogel');
+        if (scrap && scrap.qty >= 2 && biogel && biogel.qty >= 1) {
+          scrap.qty -= 2; biogel.qty -= 1;
+          state.player.hp = Math.min(state.player.maxHp, state.player.hp + 50);
+          playBeep(640, 'triangle', 0.2);
+          notify("Fabricated Nano-Medkit: Restored 50 HP");
+        } else {
+          notify("Insufficient materials!");
+        }
+      } else if (recipe === 'plasma_cell') {
+        const scrap = state.inventory.find(i => i.id === 'scrap');
+        const energy = state.inventory.find(i => i.id === 'energy_cell');
+        if (scrap && scrap.qty >= 3 && energy && energy.qty >= 1) {
+          scrap.qty -= 3; energy.qty -= 1;
+          state.weapons[0].reserve += 24;
+          playBeep(640, 'triangle', 0.2);
+          notify("Fabricated Plasma Cell: +24 Reserve Ammo");
+        } else {
+          notify("Insufficient materials!");
+        }
+      } else if (recipe === 'o2_canister') {
+        const scrap = state.inventory.find(i => i.id === 'scrap');
+        const filter = state.inventory.find(i => i.id === 'filter');
+        if (scrap && scrap.qty >= 1 && filter && filter.qty >= 1) {
+          scrap.qty -= 1; filter.qty -= 1;
+          state.player.oxygen = Math.min(100, state.player.oxygen + 40);
+          playBeep(640, 'triangle', 0.2);
+          notify("Fabricated O2 Canister: +40% Oxygen");
+        } else {
+          notify("Insufficient materials!");
+        }
+      }
+      renderInventory();
+      updateHUD();
+    }
+
+    function handleInteraction() {
+      // Check distance to terminal
+      const t = state.terminals[0];
+      const dist = Math.hypot(state.player.x - t.x, state.player.y - t.y);
+      if (dist < 50) {
+        togglePuzzle(true);
+      }
+    }
+
+    // MAIN UPDATE LOOP
+    function update() {
+      const p = state.player;
+
+      // Locomotion
+      let dx = 0; let dy = 0;
+      if (keys['w'] || keys['arrowup']) dy -= 1;
+      if (keys['s'] || keys['arrowdown']) dy += 1;
+      if (keys['a'] || keys['arrowleft']) dx -= 1;
+      if (keys['d'] || keys['arrowright']) dx += 1;
+
+      // Sprint / Dash
+      let speed = p.speed;
+      if (keys['shift'] && (dx !== 0 || dy !== 0) && p.stamina > 0.5) {
+        speed *= 1.8;
+        p.stamina = Math.max(0, p.stamina - 0.7);
+      } else {
+        p.stamina = Math.min(p.maxStamina, p.stamina + 0.3);
+      }
+
+      if (dx !== 0 && dy !== 0) {
+        dx *= 0.7071;
+        dy *= 0.7071;
+      }
+
+      p.x += dx * speed;
+      p.y += dy * speed;
+
+      // Keep inside arena bounds
+      p.x = Math.max(40, Math.min(canvas.width - 40, p.x));
+      p.y = Math.max(40, Math.min(canvas.height - 40, p.y));
+
+      // Firing
+      if (mouse.down) {
+        fireWeapon();
+      }
+
+      // Update Bullets
+      for (let i = state.bullets.length - 1; i >= 0; i--) {
+        const b = state.bullets[i];
+        b.x += b.vx;
+        b.y += b.vy;
+
+        // Player bullet hits Boss
+        const bossDist = Math.hypot(b.x - state.boss.x, b.y - state.boss.y);
+        if (b.isPlayer && bossDist < state.boss.radius && state.boss.hp > 0) {
+          state.boss.hp = Math.max(0, state.boss.hp - b.damage);
+          state.bullets.splice(i, 1);
+          spawnHitParticles(b.x, b.y, '#ef4444');
+          playBeep(240, 'square', 0.04, 0.05);
+
+          // Boss phase transition logic (OblivionsEdge.Boss / IBossController)
+          if (state.boss.hp <= 500 && state.boss.phase === 1) {
+            state.boss.phase = 2;
+            document.getElementById('bossPhaseTag').textContent = "PHASE 2";
+            notify("WARNING: Bio-Synthetic Archon entered Phase 2! Attack speed accelerated.");
+            playBeep(200, 'sawtooth', 0.6, 0.2);
+          } else if (state.boss.hp <= 200 && state.boss.phase === 2) {
+            state.boss.phase = 3;
+            document.getElementById('bossPhaseTag').textContent = "ENRAGED";
+            document.getElementById('bossPhaseTag').className = "text-[10px] bg-red-600 text-white font-bold px-1.5 py-0.5 rounded animate-pulse";
+            notify("CRITICAL: Archon is ENRAGED! Radial energy burst imminent!");
+          } else if (state.boss.hp <= 0 && state.boss.phase !== 4) {
+            state.boss.phase = 4;
+            document.getElementById('bossPhaseTag').textContent = "DEFEATED";
+            notify("VICTORY! Bio-Synthetic Archon neutralized.");
+          }
+          continue;
+        }
+
+        // Out of bounds
+        if (b.x < 0 || b.x > canvas.width || b.y < 0 || b.y > canvas.height) {
+          state.bullets.splice(i, 1);
+        }
+      }
+
+      // Update Boss AI
+      const boss = state.boss;
+      if (boss.hp > 0) {
+        boss.angle += 0.02;
+        boss.attackTimer++;
+
+        const fireInterval = boss.phase === 1 ? 90 : (boss.phase === 2 ? 50 : 25);
+        if (boss.attackTimer > fireInterval) {
+          boss.attackTimer = 0;
+          // Spawn boss projectile towards player
+          const bAngle = Math.atan2(p.y - boss.y, p.x - boss.x);
+          state.bullets.push({
+            x: boss.x + Math.cos(bAngle) * 35,
+            y: boss.y + Math.sin(bAngle) * 35,
+            vx: Math.cos(bAngle) * (boss.phase === 3 ? 7 : 5),
+            vy: Math.sin(bAngle) * (boss.phase === 3 ? 7 : 5),
+            damage: 15,
+            color: '#ef4444',
+            isPlayer: false
+          });
+        }
+      }
+
+      // Boss bullets hitting player
+      for (let i = state.bullets.length - 1; i >= 0; i--) {
+        const b = state.bullets[i];
+        if (!b.isPlayer) {
+          const pDist = Math.hypot(b.x - p.x, b.y - p.y);
+          if (pDist < p.radius) {
+            p.hp = Math.max(0, p.hp - b.damage);
+            p.sanity = Math.max(0, p.sanity - 4);
+            state.bullets.splice(i, 1);
+            spawnHitParticles(b.x, b.y, '#f87171');
+            playBeep(120, 'sawtooth', 0.1, 0.15);
+          }
+        }
+      }
+
+      // Check Terminal Proximity
+      const term = state.terminals[0];
+      const tDist = Math.hypot(p.x - term.x, p.y - term.y);
+      const promptEl = document.getElementById('interactPrompt');
+      if (tDist < 50 && !term.solved) {
+        promptEl.classList.remove('hidden');
+      } else {
+        promptEl.classList.add('hidden');
+      }
+
+      // Update Particles
+      for (let i = state.particles.length - 1; i >= 0; i--) {
+        const pt = state.particles[i];
+        pt.x += pt.vx;
+        pt.y += pt.vy;
+        pt.alpha -= 0.03;
+        if (pt.alpha <= 0) state.particles.splice(i, 1);
+      }
+
+      updateHUD();
+    }
+
+    function spawnHitParticles(x, y, color) {
+      for (let i = 0; i < 8; i++) {
+        state.particles.push({
+          x, y,
+          vx: (Math.random() - 0.5) * 4,
+          vy: (Math.random() - 0.5) * 4,
+          radius: Math.random() * 3 + 1,
+          color,
+          alpha: 1
+        });
+      }
+    }
+
+    function updateHUD() {
+      const p = state.player;
+      document.getElementById('hpBar').style.width = `${(p.hp / p.maxHp) * 100}%`;
+      document.getElementById('hpVal').textContent = `${Math.ceil(p.hp)} / ${p.maxHp}`;
+
+      document.getElementById('staminaBar').style.width = `${(p.stamina / p.maxStamina) * 100}%`;
+      document.getElementById('staminaVal').textContent = `${Math.ceil(p.stamina)} / ${p.maxStamina}`;
+
+      document.getElementById('o2Bar').style.width = `${p.oxygen}%`;
+      document.getElementById('o2Val').textContent = `${Math.ceil(p.oxygen)}%`;
+
+      document.getElementById('sanityBar').style.width = `${p.sanity}%`;
+      document.getElementById('sanityVal').textContent = `${Math.ceil(p.sanity)}%`;
+
+      const w = state.weapons[state.currentWeaponIdx];
+      document.getElementById('ammoCurrent').textContent = w.clip;
+      document.getElementById('ammoReserve').textContent = w.reserve;
+
+      const boss = state.boss;
+      document.getElementById('bossHpBar').style.width = `${(boss.hp / boss.maxHp) * 100}%`;
+      document.getElementById('bossHpText').textContent = `${Math.ceil(boss.hp)} / ${boss.maxHp}`;
+    }
+
+    // RENDER LOOP
+    function render() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      // Floor grid (Derelict station metal panels)
+      ctx.strokeStyle = state.terminals[0].solved ? '#0f172a' : '#080c14';
+      ctx.lineWidth = 1;
+      const gridSize = 48;
+      for (let x = 0; x < canvas.width; x += gridSize) {
+        ctx.beginPath();
+        ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height);
+        ctx.stroke();
+      }
+      for (let y = 0; y < canvas.height; y += gridSize) {
+        ctx.beginPath();
+        ctx.moveTo(0, y); ctx.lineTo(canvas.width, y);
+        ctx.stroke();
+      }
+
+      // Draw Terminal
+      const t = state.terminals[0];
+      ctx.fillStyle = t.solved ? '#065f46' : '#78350f';
+      ctx.beginPath();
+      ctx.arc(t.x, t.y, t.radius, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = t.solved ? '#10b981' : '#f59e0b';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+
+      ctx.fillStyle = '#f8fafc';
+      ctx.font = '10px monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText(t.solved ? "PWR ONLINE" : "GRID LOCK", t.x, t.y + 4);
+
+      // Draw Boss
+      const b = state.boss;
+      if (b.hp > 0) {
+        ctx.save();
+        ctx.translate(b.x, b.y);
+        ctx.rotate(b.angle);
+
+        // Outer Bio-Tentacles
+        ctx.strokeStyle = b.phase === 3 ? '#ef4444' : '#991b1b';
+        ctx.lineWidth = 4;
+        for (let i = 0; i < 6; i++) {
+          ctx.rotate(Math.PI / 3);
+          ctx.beginPath();
+          ctx.moveTo(0, 0);
+          ctx.lineTo(b.radius + 18, 0);
+          ctx.stroke();
+        }
+
+        // Core Body
+        ctx.fillStyle = b.phase === 3 ? '#7f1d1d' : '#450a0a';
+        ctx.beginPath();
+        ctx.arc(0, 0, b.radius, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = '#ef4444';
+        ctx.lineWidth = 3;
+        ctx.stroke();
+
+        ctx.restore();
+      }
+
+      // Draw Bullets
+      state.bullets.forEach(bullet => {
+        ctx.fillStyle = bullet.color;
+        ctx.shadowColor = bullet.color;
+        ctx.shadowBlur = 8;
+        ctx.beginPath();
+        ctx.arc(bullet.x, bullet.y, bullet.isPlayer ? 4 : 5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.shadowBlur = 0;
+      });
+
+      // Draw Particles
+      state.particles.forEach(pt => {
+        ctx.fillStyle = pt.color;
+        ctx.globalAlpha = pt.alpha;
+        ctx.beginPath();
+        ctx.arc(pt.x, pt.y, pt.radius, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.globalAlpha = 1;
+      });
+
+      // Draw Flashlight / Vision Cone from Player
+      const p = state.player;
+      const aimAngle = Math.atan2(mouse.y - p.y, mouse.x - p.x);
+
+      const grad = ctx.createRadialGradient(p.x, p.y, 20, p.x, p.y, 280);
+      grad.addColorStop(0, 'rgba(56, 189, 248, 0.15)');
+      grad.addColorStop(1, 'rgba(56, 189, 248, 0)');
+
+      ctx.save();
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      ctx.moveTo(p.x, p.y);
+      ctx.arc(p.x, p.y, 280, aimAngle - 0.45, aimAngle + 0.45);
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
+
+      // Draw Player
+      ctx.save();
+      ctx.translate(p.x, p.y);
+      ctx.rotate(aimAngle);
+
+      // Gun Barrel
+      ctx.fillStyle = '#64748b';
+      ctx.fillRect(8, 6, 14, 5);
+
+      // Player Body
+      ctx.fillStyle = '#0284c7';
+      ctx.beginPath();
+      ctx.arc(0, 0, p.radius, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = '#38bdf8';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+
+      // Visor
+      ctx.fillStyle = '#38bdf8';
+      ctx.beginPath();
+      ctx.arc(4, 0, 6, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.restore();
+
+      // Request next frame
+      requestAnimationFrame(() => {
+        update();
+        render();
+      });
+    }
+
+    render();
+  </script>
+</body>
+</html>
