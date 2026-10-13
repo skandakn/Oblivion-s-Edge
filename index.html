@@ -513,15 +513,26 @@
   const AudioContextClass = window.AudioContext || window.webkitAudioContext;
   let audioCtx = null;
 
+  let musicStarted = false;
   function initAudio() {
     if (!audioCtx) audioCtx = new AudioContextClass();
     if (audioCtx.state === 'suspended') audioCtx.resume();
+    if (!musicStarted && audioEnabled) {
+      musicStarted = true;
+      startMusic(state.currentLevel);
+    }
   }
   function toggleAudio() {
     audioEnabled = !audioEnabled;
     document.getElementById('audioIcon').textContent = audioEnabled ? '🔊' : '🔇';
     document.getElementById('audioText').textContent = audioEnabled ? 'SFX ON' : 'SFX MUTED';
-    if (audioEnabled) playTone(587, 'sine', 0.1, 0.08);
+    if (audioEnabled) {
+      musicStarted = true;
+      playTone(587, 'sine', 0.1, 0.08);
+      startMusic(state.currentLevel);
+    } else {
+      stopMusic();
+    }
   }
   function playTone(freq, type='sine', duration=0.1, gainVal=0.08) {
     if (!audioEnabled) return;
@@ -559,6 +570,7 @@
   // GLOBAL ANIMATION TICK (for puzzles and neon effects)
   // =====================================================================
   let gameTick = 0;
+  let screenFlash = { alpha: 0, color: "#ef4444" };
 
   // =====================================================================
   // GAME STATE
@@ -822,11 +834,20 @@
       state.boss = {
         x:1900, y:430,
         vx:0, vy:0,
-        w:96, h:96,
+        w:110, h:110,
         armor:500, maxArmor:500,
         hp:800, maxHp:800,
         phase:1, staggerTimer:0, attackTimer:0,
-        active:false, defeated:false
+        tentacleAttackTimer:0,
+        active:false, defeated:false,
+        tentacles: Array.from({length:7}, (_, i) => ({
+          baseAngle: (i / 7) * Math.PI * 2,
+          waveOffset: i * 0.9,
+          length: 60 + i * 8,
+          segments: 6,
+          thickness: 9 - i * 0.8
+        })),
+        attackTentacles: []
       };
     }
   }
@@ -859,8 +880,10 @@
       showNotification(`⛔ SECTOR 0${lvl} LOCKED — Complete Sector 0${lvl-1} first!`);
       return;
     }
+    window.speechSynthesis && window.speechSynthesis.cancel();
     initLevel(lvl);
     showNotification(`Entering Sector 0${lvl}...`);
+    startMusic(lvl);
   }
 
   function proceedToNextLevel() {
@@ -907,9 +930,12 @@
     state.player.empCharges--;
     document.getElementById('empCount').textContent = state.player.empCharges;
     sfxEmp(); state.shake = 18;
-    for (let i=0;i<50;i++) {
-      const ang=(i/50)*Math.PI*2;
-      state.particles.push({ x:state.player.x+11, y:state.player.y+22, vx:Math.cos(ang)*15, vy:Math.sin(ang)*15, r:4, color:'#c084fc', life:40 });
+    state.particles.push({ ring: true, x: state.player.x+11, y: state.player.y+22, radius: 0, maxRadius: 360, color: '#38bdf8', life: 30, maxLife: 30 });
+    state.particles.push({ ring: true, x: state.player.x+11, y: state.player.y+22, radius: 0, maxRadius: 280, color: '#c084fc', life: 25, maxLife: 25 });
+    for (let i=0;i<60;i++) {
+      const ang=(i/60)*Math.PI*2;
+      const spd = 4 + Math.random() * 12;
+      state.particles.push({ x:state.player.x+11, y:state.player.y+22, vx:Math.cos(ang)*spd, vy:Math.sin(ang)*spd, r:3+Math.random()*2, color:i%2===0?'#38bdf8':'#c084fc', life:35 });
     }
     state.drones.forEach(d=>{ d.hp-=80; d.vx=0; spawnFloatingText(d.x, d.y-20, "STUNNED!", '#c084fc'); });
     if (state.boss.active && !state.boss.defeated) {
@@ -1885,8 +1911,14 @@
     const originX=p.x+p.width/2, originY=p.y+p.height/2;
     const aimAngle=Math.atan2((mouse.y+state.camera.y)-originY,(mouse.x+state.camera.x)-originX);
     state.shotsFired++; state.shake=w.melee?8:(state.curWeapIdx===2?6:2);
+    // Muzzle flash burst
+    state.particles.push({ muzzle: true, x: originX + Math.cos(aimAngle)*18, y: originY + Math.sin(aimAngle)*18, angle: aimAngle, color: w.color, life: 6, maxLife: 6 });
     if (w.melee) {
       state.particles.push({slash:true,x:originX+Math.cos(aimAngle)*35,y:originY+Math.sin(aimAngle)*35,angle:aimAngle,life:14});
+      for (let s = 0; s < 12; s++) {
+        const sa = aimAngle + (Math.random() - 0.5) * 1.2;
+        state.particles.push({ x: originX + Math.cos(aimAngle)*25, y: originY + Math.sin(aimAngle)*25, vx: Math.cos(sa)*(4+Math.random()*6), vy: Math.sin(sa)*(4+Math.random()*6), r: 2+Math.random()*2, color: s%2===0?'#f43f5e':'#fb923c', life: 14+Math.random()*10 });
+      }
       checkMeleeHit(originX,originY,aimAngle,w.damage);
     } else if (w.count) {
       for(let i=0;i<w.count;i++){
@@ -1931,10 +1963,19 @@
 
   function defeatBoss() {
     state.boss.defeated=true;
+    state.boss.attackTentacles = [];
     document.getElementById('bossHud').style.opacity='0';
     document.getElementById('countdownBanner').classList.add('hidden');
     sfxBuy();
-    for(let i=0;i<80;i++) state.particles.push({x:state.boss.x,y:state.boss.y,vx:(Math.random()-.5)*18,vy:(Math.random()-.5)*18,r:5,color:'#ec4899',life:80});
+    stopMusic();
+    speakBoss('death');
+    const deathColors = ['#a855f7','#ec4899','#22d3ee','#fbbf24','#ffffff'];
+    for(let i=0;i<120;i++) {
+      const ang = (i / 120) * Math.PI * 2;
+      state.particles.push({x:state.boss.x+(Math.random()-.5)*30,y:state.boss.y+(Math.random()-.5)*30,vx:Math.cos(ang)*(8+Math.random()*14),vy:Math.sin(ang)*(8+Math.random()*14),r:4+Math.random()*6,color:deathColors[i%deathColors.length],life:60+Math.random()*40});
+    }
+    state.particles.push({ ring: true, x: state.boss.x, y: state.boss.y, radius: 0, maxRadius: 250, color: '#a855f7', life: 35, maxLife: 35 });
+    state.particles.push({ ring: true, x: state.boss.x, y: state.boss.y, radius: 0, maxRadius: 180, color: '#ec4899', life: 28, maxLife: 28 });
     spawnLootDrop(state.boss.x,state.boss.y,12); addCredits(500);
     setTimeout(()=>{
       const acc=state.shotsFired>0?Math.round((state.shotsHit/state.shotsFired)*100):100;
@@ -2113,8 +2154,27 @@
         const boss=state.boss;
         if(boss.active&&!boss.defeated&&Math.hypot(boss.x-b.x,boss.y-b.y)<boss.w/2){
           state.totalDamageDealt+=b.damage; state.shotsHit++; sfxHit();
-          if(boss.armor>0){boss.armor-=b.damage;spawnFloatingText(boss.x,boss.y-30,`${b.damage}`,'#f59e0b');if(boss.armor<=0){boss.phase=3;showNotification("💥 XENARCH CHITIN ARMOR SHATTERED! CORE EXPOSED!");}}
-          else{boss.hp-=b.damage;spawnFloatingText(boss.x,boss.y-30,`${b.damage}`,'#f87171');if(boss.hp<=0)defeatBoss();}
+          for(let spk=0; spk<6; spk++) {
+            state.particles.push({ x:b.x, y:b.y, vx:(Math.random()-0.5)*7, vy:(Math.random()-0.5)*7, r:2+Math.random()*2, color:Math.random()<0.5?'#f59e0b':'#f43f5e', life:12+Math.random()*8 });
+          }
+          if(boss.armor>0){
+            boss.armor-=b.damage;
+            spawnFloatingText(boss.x,boss.y-30,`${b.damage}`,'#f59e0b');
+            if(boss.armor<=0){
+              boss.phase=3;
+              speakBoss('armor');
+              showNotification("💥 ALIEN CHITIN ARMOR SHATTERED! CORE EXPOSED!");
+              state.particles.push({ ring: true, x: boss.x, y: boss.y, radius: 0, maxRadius: 180, color: '#f59e0b', life: 25, maxLife: 25 });
+            }
+          } else {
+            boss.hp-=b.damage;
+            spawnFloatingText(boss.x,boss.y-30,`${b.damage}`,'#f87171');
+            if(boss.hp<=0) defeatBoss();
+            else if(boss.hp < boss.maxHp * 0.4 && boss.phase === 3) {
+              boss.phase = 4;
+              speakBoss('enrage');
+            }
+          }
           if(!b.piercing)b.life=0;
         }
       } else {
@@ -2150,22 +2210,80 @@
       state.boss.active=true;
       document.getElementById('bossHud').style.opacity='1';
       document.getElementById('bossHud').classList.remove('-translate-y-4');
-      showNotification("⚠️ XENARCH PRIME BIO-SYNTHETIC HORROR DETECTED!"); sfxAlarm();
+      showNotification("⚠️ WARNING: ALIEN ARCHON PRIME EMERGING FROM THE VOID!"); sfxAlarm();
+      setTimeout(() => speakBoss('spawn'), 600);
     }
     if(state.boss.active&&!state.boss.defeated){
       const b=state.boss;
-      const dx=(p.x+p.width/2)-b.x;
+      const playerCX = p.x + p.width/2;
+      const playerCY = p.y + p.height/2;
+      const dx=playerCX - b.x;
       if(b.staggerTimer>0){b.staggerTimer--;b.vx=0;}
       else{
         if(b.phase===1)b.vx=Math.sign(dx)*2.2;
-        else if(b.phase===2||b.phase===4)b.vx=Math.sign(dx)*(b.phase===4?6.5:4.5);
-        else if(b.phase===3)b.vx=0;
+        else if(b.phase===2)b.vx=Math.sign(dx)*4.0;
+        else if(b.phase===3)b.vx=Math.sign(dx)*1.6;
+        else if(b.phase===4)b.vx=Math.sign(dx)*6.5;
       }
       b.x+=b.vx;
-      if(!p.isDashing&&Math.hypot(b.x-(p.x+p.width/2),b.y-(p.y+p.height/2))<b.w/2+10) damagePlayer(b.phase===4?35:22);
-      document.getElementById('bossArmorBar').style.width=`${(b.armor/b.maxArmor)*100}%`;
-      document.getElementById('bossHpBar').style.width=`${(b.hp/b.maxHp)*100}%`;
-      document.getElementById('bossHpText').textContent=`${Math.round((b.hp/b.maxHp)*100)}%`;
+      if(!p.isDashing&&Math.hypot(b.x-playerCX,b.y-playerCY)<b.w/2+10) damagePlayer(b.phase===4?35:22);
+
+      // ── TENTACLE ATTACK LOGIC ──
+      b.tentacleAttackTimer = (b.tentacleAttackTimer || 0) + 1;
+      const attackInterval = b.phase === 4 ? 50 : (b.phase === 3 ? 75 : (b.phase === 2 ? 100 : 140));
+      const numTentacles   = b.phase === 4 ? 4 : (b.phase >= 3 ? 3 : (b.phase === 2 ? 2 : 1));
+
+      if (b.tentacleAttackTimer >= attackInterval) {
+        b.tentacleAttackTimer = 0;
+        if (Math.random() < 0.25) setTimeout(() => speakBoss('taunt'), 200);
+
+        for (let ti = 0; ti < numTentacles; ti++) {
+          const angleToPlayer = Math.atan2(playerCY - b.y, playerCX - b.x);
+          const spread = (ti - (numTentacles - 1)/2) * 0.45;
+          const atkAngle = angleToPlayer + spread;
+          b.attackTentacles.push({
+            angle: atkAngle,
+            length: 0,
+            maxLength: 170 + Math.random() * 60,
+            extending: true,
+            retracting: false,
+            thickness: 14,
+            damageDealt: false,
+            life: 80
+          });
+        }
+      }
+
+      // Update attack tentacles
+      for (let i = b.attackTentacles.length - 1; i >= 0; i--) {
+        const at = b.attackTentacles[i];
+        at.life--;
+        if (at.extending) {
+          at.length += 14 + b.phase * 3;
+          if (at.length >= at.maxLength) { at.extending = false; at.retracting = true; }
+          if (!at.damageDealt) {
+            const tipX = b.x + Math.cos(at.angle) * at.length;
+            const tipY = b.y + Math.sin(at.angle) * at.length;
+            if (Math.hypot(tipX - playerCX, tipY - playerCY) < 24 && !p.isDashing) {
+              damagePlayer(b.phase === 4 ? 30 : 20);
+              at.damageDealt = true;
+              spawnFloatingText(tipX, tipY - 20, 'TENTACLE GRAB!', '#c084fc');
+              for (let k = 0; k < 8; k++) {
+                const sa = Math.random() * Math.PI * 2;
+                state.particles.push({ x: tipX, y: tipY, vx: Math.cos(sa)*5, vy: Math.sin(sa)*5, r: 3+Math.random()*3, color: k%2===0?'#4ade80':'#86efac', life: 18+Math.random()*12 });
+              }
+            }
+          }
+        } else if (at.retracting) {
+          at.length -= 16;
+          if (at.length <= 0) at.life = 0;
+        }
+        if (at.life <= 0) b.attackTentacles.splice(i, 1);
+      }
+
+      document.getElementById('bossArmorBar').style.width=`${Math.max(0,(b.armor/b.maxArmor)*100)}%`;
+      document.getElementById('bossHpBar').style.width=`${Math.max(0,(b.hp/b.maxHp)*100)}%`;
+      document.getElementById('bossHpText').textContent=`${Math.round(Math.max(0,(b.hp/b.maxHp)*100))}%`;
       document.getElementById('bossPhaseBadge').textContent=b.phase===4?'VOID ENRAGED':(b.phase===3?'CORE EXPOSED':`PHASE ${b.phase}`);
     }
 
@@ -2237,6 +2355,74 @@
     ctx.strokeStyle=planGlow; ctx.lineWidth=3;
     ctx.beginPath(); ctx.ellipse(planX,planY+5,110,18,0,Math.PI*0.15,Math.PI*1.15); ctx.stroke();
     ctx.restore();
+
+    // ── SPACESHIP INTERIOR STRUCTURES ─────────────────────────────────
+    // 1. Metal Hull Panel Grid
+    const panelW = 140, panelH = 90;
+    const startPX = -(camX * 0.15) % panelW;
+    const startPY = -(camY * 0.15) % panelH;
+    ctx.strokeStyle = lvl===2?'rgba(16,185,129,0.06)':(lvl===3?'rgba(168,85,247,0.07)':'rgba(56,189,248,0.07)');
+    ctx.lineWidth = 1;
+    for(let px = startPX - panelW; px < width + panelW; px += panelW) {
+      ctx.beginPath(); ctx.moveTo(px, 0); ctx.lineTo(px, height); ctx.stroke();
+      for(let py = startPY - panelH; py < height + panelH; py += panelH) {
+        ctx.fillStyle = 'rgba(148,163,184,0.15)';
+        ctx.fillRect(px-2, py-2, 4, 4);
+      }
+    }
+    for(let py = startPY - panelH; py < height + panelH; py += panelH) {
+      ctx.beginPath(); ctx.moveTo(0, py); ctx.lineTo(width, py); ctx.stroke();
+    }
+
+    // 2. Structural Girder Columns with Warning Stripes
+    const colSpacing = 650;
+    const startCol = -(camX * 0.4) % colSpacing;
+    for(let cx = startCol - colSpacing; cx < width + colSpacing; cx += colSpacing) {
+      ctx.fillStyle = 'rgba(15,23,42,0.6)';
+      ctx.fillRect(cx, 0, 48, height);
+      ctx.strokeStyle = 'rgba(51,65,85,0.7)';
+      ctx.lineWidth = 1.5;
+      ctx.strokeRect(cx, 0, 48, height);
+      for(let sy = 0; sy < height; sy += 32) {
+        ctx.fillStyle = (Math.floor(sy/32)%2===0)?'rgba(245,158,11,0.18)':'rgba(15,23,42,0.4)';
+        ctx.beginPath();
+        ctx.moveTo(cx, sy); ctx.lineTo(cx+48, sy+18); ctx.lineTo(cx+48, sy+32); ctx.lineTo(cx, sy+14);
+        ctx.closePath(); ctx.fill();
+      }
+    }
+
+    // 3. Glowing Conduit Energy Pipes
+    const conduitColor = lvl===2?'#10b981':(lvl===3?'#c084fc':'#06b6d4');
+    const pipeY = 130 - (camY * 0.2) % 400;
+    ctx.strokeStyle = conduitColor + '44';
+    ctx.lineWidth = 5;
+    ctx.beginPath(); ctx.moveTo(0, pipeY); ctx.lineTo(width, pipeY); ctx.stroke();
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 1.5;
+    ctx.shadowColor = conduitColor; ctx.shadowBlur = 10;
+    ctx.beginPath(); ctx.moveTo(0, pipeY); ctx.lineTo(width, pipeY); ctx.stroke();
+    ctx.shadowBlur = 0;
+    for(let jx = -(camX * 0.25)%350; jx < width + 350; jx += 350) {
+      const jPulse = 0.5 + 0.5 * Math.sin(t * 0.08 + jx * 0.01);
+      ctx.fillStyle = 'rgba(15,23,42,0.9)';
+      ctx.strokeStyle = conduitColor; ctx.lineWidth = 2;
+      ctx.fillRect(jx-10, pipeY-10, 20, 20); ctx.strokeRect(jx-10, pipeY-10, 20, 20);
+      ctx.fillStyle = conduitColor;
+      ctx.globalAlpha = jPulse;
+      ctx.beginPath(); ctx.arc(jx, pipeY, 4, 0, Math.PI*2); ctx.fill();
+      ctx.globalAlpha = 1;
+    }
+
+    // 4. Ceiling Fluorescent Tube Light Strips
+    for(let lx = -(camX * 0.3)%280; lx < width + 280; lx += 280) {
+      const flicker = Math.sin(t * 0.15 + lx) > 0.95 ? 0.3 : 0.85;
+      ctx.fillStyle = `rgba(255,255,255,${0.15*flicker})`;
+      ctx.fillRect(lx, 10, 80, 5);
+      ctx.fillStyle = conduitColor;
+      ctx.globalAlpha = 0.08 * flicker;
+      ctx.beginPath(); ctx.moveTo(lx, 15); ctx.lineTo(lx-35, 180); ctx.lineTo(lx+115, 180); ctx.lineTo(lx+80, 15); ctx.fill();
+      ctx.globalAlpha = 1;
+    }
 
     // ── 2. BUILDINGS — Detailed Sci-Fi Architecture ───────────────────
     for(const b of state.buildings){
@@ -2539,65 +2725,238 @@
       }
     }
 
-    // ── 9. BOSS — XENARCH PRIME ───────────────────────────────────────
-    const boss=state.boss;
-    if(boss.active&&!boss.defeated){
-      const bx=boss.x-camX, by=boss.y-camY;
-      const bAnim=Math.sin(t*0.08);
-      ctx.save(); ctx.translate(bx,by);
-      const bColor=boss.phase===4?'#7c2d12':boss.phase===3?'#1e1b4b':'#4a0013';
-      const bGlow=boss.phase===4?'#ef4444':boss.phase===3?'#a855f7':'#be123c';
-      ctx.shadowColor=bGlow; ctx.shadowBlur=30+10*Math.abs(bAnim);
-      // Massive body — multiple segments
-      ctx.fillStyle=bColor;
-      ctx.beginPath(); ctx.ellipse(0,0,boss.w*0.5,boss.h*0.55,0,0,Math.PI*2); ctx.fill();
-      // Outer shell
-      ctx.strokeStyle=bGlow; ctx.lineWidth=4;
-      ctx.beginPath(); ctx.ellipse(0,0,boss.w*0.5,boss.h*0.55,0,0,Math.PI*2); ctx.stroke();
-      // 6 massive limbs
-      for(let lm=0;lm<6;lm++){
-        const angle=(lm/6)*Math.PI*2+bAnim*0.08;
-        const lx=Math.cos(angle)*boss.w*0.65, ly=Math.sin(angle)*boss.h*0.5+bAnim*5;
-        ctx.strokeStyle=bGlow; ctx.lineWidth=6;
-        ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(lx,ly); ctx.stroke();
-        // Joint
-        ctx.fillStyle=bColor;
-        ctx.strokeStyle=bGlow; ctx.lineWidth=3;
-        ctx.beginPath(); ctx.arc(lx,ly,8,0,Math.PI*2); ctx.fill(); ctx.stroke();
-        // Claw
-        const clawAngle=angle+Math.PI*0.1;
-        ctx.strokeStyle='#f87171'; ctx.lineWidth=3;
-        ctx.beginPath(); ctx.moveTo(lx,ly); ctx.lineTo(lx+Math.cos(clawAngle)*15,ly+Math.sin(clawAngle)*15); ctx.stroke();
+    // ── 9. SCARY ALIEN ARCHON BOSS & TENTACLE ATTACKS ─────────────────
+    const b = state.boss;
+    if (b.active && !b.defeated) {
+      const bx = b.x - camX, by = b.y - camY;
+      const bPulse = 0.5 + 0.5 * Math.sin(t * (b.phase === 4 ? 0.25 : 0.09));
+      const bodyR  = b.w / 2;
+      const alienClr = b.phase === 4 ? '#3b0764' : (b.phase === 3 ? '#1e1b4b' : '#1a0a2e');
+      const skinClr  = b.phase === 4 ? '#6b21a8' : (b.phase === 3 ? '#312e81' : '#2d1b69');
+      const biolum   = b.phase === 4 ? '#f43f5e' : (b.phase === 3 ? '#a855f7' : '#22d3ee');
+      const biolum2  = b.phase === 4 ? '#fb923c' : (b.phase === 3 ? '#ec4899' : '#34d399');
+
+      // ── DRAW IDLE TENTACLES (behind body) ──
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+      if (b.tentacles) {
+        b.tentacles.forEach((tl, ti) => {
+          const waveAng = tl.baseAngle + Math.sin(t * 0.05 + tl.waveOffset) * 0.6;
+          const midAng  = waveAng + Math.sin(t * 0.08 + tl.waveOffset * 1.3) * 0.4;
+          const tipX    = bx + Math.cos(waveAng) * tl.length;
+          const tipY    = by + Math.sin(waveAng) * tl.length + Math.sin(t * 0.07 + ti) * 8;
+          const cp1x    = bx + Math.cos(midAng) * tl.length * 0.5;
+          const cp1y    = by + Math.sin(midAng) * tl.length * 0.5;
+
+          const tGrad = ctx.createLinearGradient(bx, by, tipX, tipY);
+          tGrad.addColorStop(0, biolum + 'bb');
+          tGrad.addColorStop(0.6, biolum2 + '66');
+          tGrad.addColorStop(1, 'rgba(0,0,0,0)');
+          ctx.strokeStyle = tGrad;
+          ctx.lineWidth = tl.thickness * (0.8 + 0.2 * bPulse);
+          ctx.beginPath();
+          ctx.moveTo(bx, by);
+          ctx.quadraticCurveTo(cp1x, cp1y, tipX, tipY);
+          ctx.stroke();
+
+          for (let si = 1; si <= tl.segments; si++) {
+            const frac = si / (tl.segments + 1);
+            const sx = bx + (cp1x - bx) * frac * 2 * (frac < 0.5 ? frac : (1 - frac)) + (tipX - bx) * frac;
+            const sy = by + (cp1y - by) * frac * 2 * (frac < 0.5 ? frac : (1 - frac)) + (tipY - by) * frac;
+            ctx.fillStyle = biolum;
+            ctx.globalAlpha = 0.5 + 0.3 * Math.sin(t * 0.1 + si * 0.7 + ti);
+            ctx.beginPath(); ctx.arc(sx, sy, tl.thickness * 0.28, 0, Math.PI*2); ctx.fill();
+            ctx.globalAlpha = 1;
+          }
+        });
       }
-      // Pulsating core
-      const coreR=14+3*Math.abs(bAnim);
-      const coreColor=boss.phase===3?'#ec4899':boss.phase===4?'#ef4444':'#e11d48';
-      ctx.shadowColor=coreColor; ctx.shadowBlur=25;
-      ctx.fillStyle=coreColor;
-      ctx.beginPath(); ctx.arc(0,0,coreR,0,Math.PI*2); ctx.fill();
-      // Inner core
-      ctx.fillStyle='#fff'; ctx.shadowBlur=10;
-      ctx.beginPath(); ctx.arc(0,0,6,0,Math.PI*2); ctx.fill();
-      // Massive alien head
-      ctx.fillStyle=bColor; ctx.shadowBlur=0;
-      ctx.beginPath(); ctx.ellipse(0,-boss.h*0.45,boss.w*0.3,boss.h*0.28,0,0,Math.PI*2); ctx.fill();
-      ctx.strokeStyle=bGlow; ctx.lineWidth=2;
-      ctx.beginPath(); ctx.ellipse(0,-boss.h*0.45,boss.w*0.3,boss.h*0.28,0,0,Math.PI*2); ctx.stroke();
-      // 4 eyes
-      [-14,-5,5,14].forEach((ex,ei)=>{
-        const eyeY=-boss.h*0.45;
-        ctx.fillStyle='#fff'; ctx.beginPath(); ctx.arc(ex,eyeY,7,0,Math.PI*2); ctx.fill();
-        const pupilColor=ei%2===0?'#ef4444':'#fbbf24';
-        ctx.fillStyle=pupilColor; ctx.shadowColor=pupilColor; ctx.shadowBlur=12;
-        ctx.beginPath(); ctx.arc(ex,eyeY,4,0,Math.PI*2); ctx.fill();
+
+      // ── ATTACK TENTACLES (lunging toward player) ──
+      if (b.attackTentacles) {
+        b.attackTentacles.forEach(at => {
+          const tipX = b.x - camX + Math.cos(at.angle) * at.length;
+          const tipY = b.y - camY + Math.sin(at.angle) * at.length;
+          const cpX  = bx + Math.cos(at.angle) * at.length * 0.55 + Math.sin(at.angle) * 25;
+          const cpY  = by + Math.sin(at.angle) * at.length * 0.55 - Math.cos(at.angle) * 25;
+          const prog = at.length / at.maxLength;
+
+          const atGlowG = ctx.createLinearGradient(bx, by, tipX, tipY);
+          atGlowG.addColorStop(0, 'rgba(168,85,247,0)');
+          atGlowG.addColorStop(0.5, `rgba(168,85,247,${0.25 * prog})`);
+          atGlowG.addColorStop(1, `rgba(236,72,153,${0.5 * prog})`);
+          ctx.strokeStyle = atGlowG;
+          ctx.lineWidth = at.thickness * 2.5;
+          ctx.globalAlpha = 0.4;
+          ctx.beginPath(); ctx.moveTo(bx, by); ctx.quadraticCurveTo(cpX, cpY, tipX, tipY); ctx.stroke();
+          ctx.globalAlpha = 1;
+
+          const atGrad = ctx.createLinearGradient(bx, by, tipX, tipY);
+          atGrad.addColorStop(0, '#581c87');
+          atGrad.addColorStop(0.6, '#9333ea');
+          atGrad.addColorStop(1, '#a855f7');
+          ctx.strokeStyle = atGrad;
+          ctx.lineWidth = at.thickness * (0.9 + 0.2 * prog);
+          ctx.beginPath(); ctx.moveTo(bx, by); ctx.quadraticCurveTo(cpX, cpY, tipX, tipY); ctx.stroke();
+
+          ctx.fillStyle = '#e879f9';
+          ctx.beginPath(); ctx.arc(tipX, tipY, at.thickness * 0.7, 0, Math.PI*2); ctx.fill();
+          const clawGrad = ctx.createRadialGradient(tipX, tipY, 0, tipX, tipY, at.thickness * 2);
+          clawGrad.addColorStop(0, 'rgba(236,72,153,0.7)'); clawGrad.addColorStop(1, 'rgba(0,0,0,0)');
+          ctx.fillStyle = clawGrad;
+          ctx.beginPath(); ctx.arc(tipX, tipY, at.thickness * 2, 0, Math.PI*2); ctx.fill();
+        });
+      }
+
+      ctx.save();
+      ctx.translate(bx, by);
+
+      // ── OUTER THREAT AURA ──
+      for (let ri = 0; ri < 3; ri++) {
+        const rP = 0.5 + 0.5 * Math.sin(t * 0.11 + ri * 1.1);
+        ctx.fillStyle = `rgba(${b.phase>=3?'168,85,247':'88,28,135'},${rP * 0.18})`;
+        ctx.beginPath(); ctx.arc(0, 0, bodyR + 22 + ri*16 + bPulse*10, 0, Math.PI*2); ctx.fill();
+      }
+
+      // ── ALIEN BODY — organic amoeboid shape ──
+      ctx.save();
+      ctx.rotate(t * 0.008);
+      const alienBodyGrad = ctx.createRadialGradient(-bodyR*0.2, -bodyR*0.2, 0, 0, 0, bodyR);
+      alienBodyGrad.addColorStop(0, skinClr);
+      alienBodyGrad.addColorStop(0.6, alienClr);
+      alienBodyGrad.addColorStop(1, '#0a0015');
+      ctx.fillStyle = alienBodyGrad;
+      ctx.beginPath();
+      for (let bp = 0; bp < 12; bp++) {
+        const ang = (bp / 12) * Math.PI * 2;
+        const rad = bodyR * (0.85 + 0.15 * Math.sin(t * 0.04 + bp * 0.8));
+        bp === 0 ? ctx.moveTo(Math.cos(ang)*rad, Math.sin(ang)*rad)
+                 : ctx.lineTo(Math.cos(ang)*rad, Math.sin(ang)*rad);
+      }
+      ctx.closePath(); ctx.fill();
+      ctx.restore();
+
+      // ── CHITIN ARMOR PLATES (phase 1-2) ──
+      if (b.armor > 0) {
+        ctx.save();
+        ctx.rotate(-t * 0.012);
+        const armorAlpha = Math.min(1, b.armor / b.maxArmor);
+        for (let ap = 0; ap < 8; ap++) {
+          const aa = (ap / 8) * Math.PI * 2;
+          ctx.save();
+          ctx.rotate(aa);
+          ctx.fillStyle = `rgba(180,130,20,${armorAlpha * 0.75})`;
+          ctx.strokeStyle = `rgba(245,200,50,${armorAlpha * 0.9})`;
+          ctx.lineWidth = 1.5;
+          ctx.beginPath();
+          ctx.ellipse(0, -bodyR * 0.72, 7, 14, 0, 0, Math.PI*2);
+          ctx.fill(); ctx.stroke();
+          ctx.restore();
+        }
+        ctx.restore();
+      }
+
+      // ── BIOLUMINESCENT SKIN SPOTS ──
+      const bioSpots = [[0.3,-0.4],[-0.35,-0.25],[0.1,0.4],[-0.2,0.5],[0.45,0.1],[-0.1,-0.55]];
+      bioSpots.forEach(([fx,fy], si) => {
+        const sp = 0.4 + 0.6 * Math.sin(t * 0.12 + si * 1.4);
+        const spotGrad = ctx.createRadialGradient(fx*bodyR, fy*bodyR, 0, fx*bodyR, fy*bodyR, bodyR*0.18);
+        spotGrad.addColorStop(0, biolum + 'ff');
+        spotGrad.addColorStop(0.5, biolum + '88');
+        spotGrad.addColorStop(1, 'rgba(0,0,0,0)');
+        ctx.fillStyle = spotGrad;
+        ctx.globalAlpha = sp * 0.85;
+        ctx.beginPath(); ctx.arc(fx*bodyR, fy*bodyR, bodyR*0.14, 0, Math.PI*2); ctx.fill();
+        ctx.globalAlpha = 1;
       });
-      // Head spines
-      ctx.strokeStyle=bGlow; ctx.lineWidth=3;
-      for(let sp=0;sp<5;sp++){
-        const sx2=(sp-2)*10;
-        ctx.beginPath(); ctx.moveTo(sx2,-boss.h*0.73); ctx.lineTo(sx2,-boss.h*0.73-15-sp*3+bAnim*4); ctx.stroke();
+
+      // ── SIX GLOWING EYES ──
+      const eyePositions = [[-14,-18],[14,-18],[0,-28],[-22,-6],[22,-6],[0,-8]];
+      eyePositions.forEach(([ex,ey], ei) => {
+        const eyePulse = 0.6 + 0.4 * Math.sin(t * 0.15 + ei * 0.9);
+        const eyeColor = b.phase===4?'#fca5a5':(b.phase===3?'#f0abfc':'#6ee7b7');
+        const pupilClr = b.phase===4?'#7f1d1d':(b.phase===3?'#581c87':'#064e3b');
+        ctx.fillStyle = 'rgba(255,255,255,0.1)';
+        ctx.beginPath(); ctx.ellipse(ex, ey, 7, 5, 0.2, 0, Math.PI*2); ctx.fill();
+        const eyeGrad = ctx.createRadialGradient(ex, ey, 0, ex, ey, 6);
+        eyeGrad.addColorStop(0, '#ffffff');
+        eyeGrad.addColorStop(0.3, eyeColor);
+        eyeGrad.addColorStop(1, 'rgba(0,0,0,0)');
+        ctx.fillStyle = eyeGrad;
+        ctx.globalAlpha = eyePulse;
+        ctx.beginPath(); ctx.arc(ex, ey, 6, 0, Math.PI*2); ctx.fill();
+        ctx.fillStyle = pupilClr;
+        ctx.globalAlpha = 0.9;
+        ctx.beginPath(); ctx.ellipse(ex, ey, 1.5, 4, 0, 0, Math.PI*2); ctx.fill();
+        ctx.globalAlpha = 1;
+      });
+
+      // ── MANDIBLES / ALIEN MOUTH ──
+      const mouthOpen = 8 + bPulse * 14;
+      ctx.save();
+      ctx.translate(0, 10);
+      [-1,1].forEach(side => {
+        ctx.strokeStyle = biolum;
+        ctx.lineWidth = 4;
+        ctx.lineCap = 'round';
+        ctx.beginPath();
+        ctx.moveTo(side * 4, 0);
+        ctx.quadraticCurveTo(side * (12 + mouthOpen*0.4), -mouthOpen * 0.5, side * (10 + mouthOpen * 0.6), -mouthOpen - 4);
+        ctx.stroke();
+        ctx.fillStyle = '#e879f9';
+        ctx.beginPath(); ctx.arc(side * (10 + mouthOpen*0.6), -mouthOpen-4, 3, 0, Math.PI*2); ctx.fill();
+      });
+      ctx.strokeStyle = biolum2;
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.moveTo(-8, 2); ctx.lineTo(8, 2);
+      ctx.quadraticCurveTo(0, 2 + mouthOpen, 0, 2 + mouthOpen);
+      ctx.stroke();
+      const mouthGrad = ctx.createRadialGradient(0, mouthOpen*0.5, 0, 0, mouthOpen*0.5, mouthOpen);
+      mouthGrad.addColorStop(0, biolum + '99'); mouthGrad.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = mouthGrad;
+      ctx.globalAlpha = 0.6 + 0.4 * bPulse;
+      ctx.beginPath(); ctx.arc(0, mouthOpen*0.5, mouthOpen, 0, Math.PI*2); ctx.fill();
+      ctx.globalAlpha = 1;
+      ctx.restore();
+
+      // ── VOID CORE ──
+      const coreColor = b.phase === 3 ? '#c084fc' : (b.phase === 4 ? '#f43f5e' : biolum);
+      const coreGlow  = ctx.createRadialGradient(0, 0, 0, 0, 0, 22 + bPulse*6);
+      coreGlow.addColorStop(0, '#ffffff');
+      coreGlow.addColorStop(0.25, coreColor);
+      coreGlow.addColorStop(1, coreColor + '00');
+      ctx.fillStyle = coreGlow;
+      ctx.beginPath(); ctx.arc(0, 0, 22 + bPulse * 6, 0, Math.PI * 2); ctx.fill();
+
+      // ── PHASE 4: VOID SPINES ──
+      if (b.phase === 4) {
+        ctx.save();
+        ctx.rotate(t * 0.05);
+        for (let sp = 0; sp < 12; sp++) {
+          const sa = (sp/12)*Math.PI*2;
+          ctx.strokeStyle = `rgba(244,63,94,${0.4+0.4*bPulse})`;
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.moveTo(Math.cos(sa)*18, Math.sin(sa)*18);
+          ctx.lineTo(Math.cos(sa)*(bodyR+8+bPulse*15), Math.sin(sa)*(bodyR+8+bPulse*15));
+          ctx.stroke();
+        }
+        ctx.restore();
+        ctx.fillStyle = `rgba(239,68,68,${bPulse * 0.8})`;
+        ctx.font = 'bold 11px monospace';
+        ctx.textAlign = 'center';
+        ctx.fillText('VOID ENRAGED', 0, -bodyR - 30);
+        ctx.textAlign = 'left';
       }
-      ctx.shadowBlur=0; ctx.restore();
+
+      ctx.restore();
+
+      // Ambient acid drips
+      if (Math.random() < 0.15) {
+        const bsa = Math.random() * Math.PI * 2;
+        const bsr = bodyR * (0.7 + Math.random() * 0.4);
+        state.particles.push({ x: b.x + Math.cos(bsa)*bsr, y: b.y + Math.sin(bsa)*bsr, vx:(Math.random()-0.5)*2, vy: 1.5+Math.random()*2, r:2+Math.random()*3, color: Math.random()<0.5?biolum:biolum2, life: 20+Math.random()*20 });
+      }
     }
 
     // ── 10. PLAYER — ASTRONAUT ────────────────────────────────────────
@@ -2716,11 +3075,28 @@
         ctx.globalAlpha=1; ctx.shadowBlur=0;
       } else if(pt.slash){
         ctx.save(); ctx.translate(pt.x-camX,pt.y-camY); ctx.rotate(pt.angle);
-        ctx.shadowColor='#ec4899'; ctx.shadowBlur=12;
+        ctx.shadowColor='#ec4899'; ctx.shadowBlur=14;
         ctx.strokeStyle='#ec4899'; ctx.lineWidth=7;
         ctx.globalAlpha=pt.life/14;
         ctx.beginPath(); ctx.arc(0,0,52,-0.7,0.7); ctx.stroke();
+        ctx.strokeStyle='#ffffff'; ctx.lineWidth=2;
+        ctx.beginPath(); ctx.arc(0,0,50,-0.6,0.6); ctx.stroke();
         ctx.globalAlpha=1; ctx.shadowBlur=0; ctx.restore();
+      } else if(pt.ring){
+        pt.radius = (pt.radius || 0) + (pt.maxRadius - (pt.radius || 0)) * 0.22;
+        ctx.save();
+        ctx.strokeStyle = pt.color; ctx.lineWidth = 3;
+        ctx.shadowColor = pt.color; ctx.shadowBlur = 10;
+        ctx.globalAlpha = Math.max(0, pt.life / pt.maxLife);
+        ctx.beginPath(); ctx.arc(pt.x - camX, pt.y - camY, pt.radius, 0, Math.PI * 2); ctx.stroke();
+        ctx.restore();
+      } else if(pt.muzzle){
+        ctx.save();
+        ctx.translate(pt.x - camX, pt.y - camY); ctx.rotate(pt.angle);
+        ctx.fillStyle = '#ffffff'; ctx.shadowColor = pt.color; ctx.shadowBlur = 14;
+        ctx.globalAlpha = pt.life / pt.maxLife;
+        ctx.beginPath(); ctx.ellipse(0, 0, 14, 5, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.restore();
       } else {
         pt.x+=pt.vx; pt.y+=pt.vy; pt.vy*=0.92; pt.vx*=0.92;
         ctx.shadowColor=pt.color; ctx.shadowBlur=6;
@@ -2730,6 +3106,15 @@
         ctx.globalAlpha=1; ctx.shadowBlur=0;
       }
       if(pt.life<=0) state.particles.splice(i,1);
+    }
+
+    // ── SCREEN FLASH DAMAGE FEEDBACK ──
+    if (screenFlash.alpha > 0) {
+      ctx.fillStyle = screenFlash.color;
+      ctx.globalAlpha = screenFlash.alpha;
+      ctx.fillRect(0, 0, width, height);
+      ctx.globalAlpha = 1;
+      screenFlash.alpha = Math.max(0, screenFlash.alpha - 0.04);
     }
   }
 
