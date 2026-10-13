@@ -1,8 +1,8 @@
 # OBLIVION'S EDGE — Team Architectural Contracts & Interface Specifications
 
-**Document Version:** 1.0.0  
+**Document Version:** 1.1.0  
 **Author:** Member 1 (Technical Lead)  
-**Target Engine:** Unity 2022.3.40f1 LTS (2D Sci-Fi Survival Horror)  
+**Target Engine:** Unity 6 (6000.6.5f1) (2D Sci-Fi Survival Horror)  
 **Repository:** [https://github.com/skandakn/Oblivion-s-Edge](https://github.com/skandakn/Oblivion-s-Edge)  
 
 ---
@@ -26,14 +26,15 @@ All code must reside within the root namespace `OblivionsEdge` and its domain-sp
 
 | Namespace | Domain Description | Assigned Owner |
 |---|---|---|
-| `OblivionsEdge.Core` | Game lifecycle, constants, global damage, interaction contracts | Member 1 (Tech Lead) |
-| `OblivionsEdge.Player` | Kinematic movement, stamina, oxygen, sanity, input mapping | Member 2 |
-| `OblivionsEdge.Weapons` | Ballistic/energy weapons, firing logic, projectiles, reloading | Member 2 |
-| `OblivionsEdge.Boss` | Boss AI, phase orchestration, enrage timers, arena listeners | Member 3 |
-| `OblivionsEdge.Puzzles` | Power grids, biometric locks, terminals, puzzle state logic | Member 4 |
-| `OblivionsEdge.Inventory` | Item definitions, stack calculations, encumbrance, slot grids | Member 5 |
-| `OblivionsEdge.Crafting` | Workbenches, resource recipes, station interaction pipeline | Member 5 |
-| `OblivionsEdge.UI` | HUD vital bars, ammo counters, modal panels, prompt overlays | Member 6 |
+| `OblivionsEdge.Core` | Game lifecycle, constants, global damage, interaction contracts, bootstrapper | Member 1 (Tech Lead) |
+| `OblivionsEdge.Player` | Kinematic movement, stamina, oxygen, sanity, input mapping, health | Member 2 |
+| `OblivionsEdge.Weapons` | Ballistic/energy weapons, firing logic, projectiles, reloading | Member 3 |
+| `OblivionsEdge.Boss` | Boss AI, phase orchestration, enrage timers, armor & weakpoints | Member 4 & Member 5 |
+| `OblivionsEdge.Puzzles` | The Edge (Laser), The Handle (Rotation), The Core (Gravity alignment) | Member 6, Member 7 & Member 8 |
+| `OblivionsEdge.Inventory` | Item definitions, stack calculations, encumbrance, story pickups | Member 9 |
+| `OblivionsEdge.Crafting` | Workbenches, resource recipes, station interaction pipeline | Member 9 & Member 10 |
+| `OblivionsEdge.DeathStorm` | Legendary weapon synthesis countdown, 3-stage mini-game, axe combat | Member 10 |
+| `OblivionsEdge.UI` | HUD vital bars, ammo counters, modal panels, prompt overlays, telemetry | Member 12 |
 
 ### 2.2 Naming Conventions
 - **Interfaces**: Prefixed with `I` in PascalCase (e.g., `IDamageable`, `IPlayerController`, `IWeapon`).
@@ -354,6 +355,42 @@ public interface IUIManager
 
 ---
 
+### 4.8 DeathStorm Legendary Weapon & Crafting Ritual Contract (`OblivionsEdge.DeathStorm`)
+**Assigned Owner:** Member 10  
+**Key Interfaces & Types:**
+- `IDeathStormCrafting`: 3-stage assembly mini-game (Core alignment, Edge sync, Energy stabilization) with strict 60-second countdown and enrage penalty.
+- `AxeCombat`: Directional heavy melee strike targeting boss exposed weak points for final execution.
+
+```csharp
+public enum CraftingStage
+{
+    Idle,
+    CoreAlignment,
+    EdgeSync,
+    EnergyStabilise,
+    Complete,
+    TimedOut
+}
+
+public interface IDeathStormCrafting
+{
+    CraftingStage CurrentStage { get; }
+    float CountdownRemaining { get; }
+    float CountdownTotal { get; }
+    bool HasDeathStorm { get; }
+    bool IsCountdownRunning { get; }
+    string CurrentInstruction { get; }
+    bool SubmitAnswer(int answer);
+    event Action<float, float> OnTimerTick;
+    event Action<CraftingStage> OnStageChanged;
+    event Action<float> OnWrongAnswer;
+    event Action OnCraftingSuccess;
+    event Action<bool> OnCountdownExpired;
+}
+```
+
+---
+
 ## 5. Cross-System Integration Flows
 
 ### Flow 1: Combat & Damage Resolution
@@ -410,12 +447,19 @@ sequenceDiagram
 ## 6. Git Workflow, Branching & Integration Protocol
 
 ### 6.1 Team Ownership Map
-- **Member 1 (Tech Lead)**: Core systems, ProjectSettings, Git hygiene, PR reviews, shared contracts (`OblivionsEdge.Core`).
-- **Member 2**: Player Locomotion, Controls, Weapons, Projectiles (`OblivionsEdge.Player`, `OblivionsEdge.Weapons`).
-- **Member 3**: Enemy AI, Boss State Machine, Arena Combat (`OblivionsEdge.Boss`).
-- **Member 4**: Puzzles, Interactive Terminals, Doors, Environmental Hazards (`OblivionsEdge.Puzzles`).
-- **Member 5**: Inventory Grids, Pickups, Crafting Workbench (`OblivionsEdge.Inventory`, `OblivionsEdge.Crafting`).
-- **Member 6**: UI Canvas, HUD, Sound Effects & Music integration (`OblivionsEdge.UI`).
+- **Member 1 (Tech Lead & Unity Foundation)**: Architecture anchor, Core interfaces (`IDamageable`, `IInteractable`, `GameConstants`, `GameManager`), `RuntimeBootstrapper.cs`, Unity 6 config, git hygiene & PR merges (`setup/unity-foundation`, Base: `main`).
+- **Member 2 (Player Movement & Survival)**: Kinematic locomotion, jump buffering, coyote time, dash evasion, player health & vitals (`feature/player-controller`).
+- **Member 3 (Gun Combat & Ballistics)**: Pulse pistol, 360-degree aiming, magazine ammo tracking, reloading, projectile physics (`feature/gun-combat`).
+- **Member 4 (Alien Boss AI & Hunting Behavior)**: Finite-state machine (Awakening, Hunt, Telegraph, Charge, Recover, Exposed), pathing (`feature/alien-ai`).
+- **Member 5 (Boss Combat, Armor & Core Release)**: Dual-layer bio-armor, armor breaking, core release trigger, weak-point collider (`feature/boss-combat`).
+- **Member 6 (The Edge: Laser Reflection Puzzle)**: 2D optics reflection puzzle, rotatable mirror nodes, laser beam receiver (`feature/edge-puzzle`).
+- **Member 7 (The Handle: Geometric Rotation Puzzle)**: Concentric ring alignment puzzle, angular step rotation, cipher solution (`feature/handle-puzzle`).
+- **Member 8 (The Core: Gravity Alignment Puzzle)**: Four-directional gravity/magnetic alignment puzzle, boss-gated unlock (`feature/core-puzzle`).
+- **Member 9 (Inventory, Interactions & Story Objects)**: Inventory container, artifact tracking, contextual interaction query, lore pickups (`feature/inventory-interactions`).
+- **Member 10 (DeathStorm Crafting & Final Strike)**: Legendary weapon 3-stage synthesis ritual, 60s countdown timer, enrage penalty, execution axe strike (`feature/deathstorm`).
+- **Member 11 (Level Design, Lighting & Atmosphere)**: 4-sector research vessel layout, survival horror 2D lighting, environmental bulkheads (`feature/level-atmosphere`).
+- **Member 12 (UI, QA & Judge Demonstration)**: In-game HUD overlay, vitals bars, ammo readout, component tracker, QA test validation, demo scripts (`feature/ui-qa`).
+- **Member 13 (Localhost Interactive Simulation & WebGL)**: Standalone 2D browser simulation (`Tools/LocalPreview/index.html`), single-click launcher, WebGL deployment (`feature/localhost-preview-webgl`).
 
 ### 6.2 Branch Naming Standard
 All development occurs in dedicated feature branches branching from `main`:
