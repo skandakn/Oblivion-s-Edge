@@ -615,6 +615,7 @@
       { id:"ammo_crate",   name:"Full Munitions Supply",          desc:"Refills all weapon reserves to max",    price:40,  repeatable:true, type:"consumable"}
     ],
     buildings:[], platforms:[], interactables:[], pickups:[], crates:[], drones:[], bullets:[], particles:[],
+    hazards:[], junctions:[], vents:[], turrets:[],
     boss:{ x:3400,y:430,vx:0,vy:0,w:90,h:90,armor:500,maxArmor:500,hp:800,maxHp:800,phase:1,staggerTimer:0,attackTimer:0,active:false,defeated:false },
     craftingCountdown:60, craftingActive:false
   };
@@ -625,6 +626,7 @@
   function initLevel(lvlNum) {
     state.currentLevel = lvlNum;
     state.bullets = []; state.particles = []; state.pickups = [];
+    state.hazards = []; state.junctions = []; state.vents = []; state.turrets = [];
     state.player.x = 120; state.player.y = 440;
     state.player.vx = 0; state.player.vy = 0;
     state.camera.x = 0; state.camera.y = 0;
@@ -634,7 +636,7 @@
 
     if (lvlNum === 1) {
       document.getElementById('levelTitle').textContent = "SECTOR 01: OUTPOST PERIMETER";
-      document.getElementById('objectiveText').textContent = "Infiltrate Armory & Refinery, solve the rooftop Orbital Sequence, and breach Sector 2 Airlock.";
+      document.getElementById('objectiveText').textContent = "Cross the rooftop suspension bridges, solve the Orbital Sequence, and breach the Sector 2 Airlock.";
       document.getElementById('bossHud').style.opacity = '0';
 
       state.buildings = [
@@ -652,6 +654,9 @@
         // Armory roof and satellite tower (oneWay: true so jumping through from below works smoothly!)
         { x:480, y:220, w:460,  h:20, oneWay:true },   // Armory roof
         { x:900, y:180, w:360,  h:20, oneWay:true },   // Satellite tower roof
+        // Suspension bridges keep the three Sector 1 rooftops connected.
+        { x:760, y:160, w:300,  h:14, oneWay:true, bridge:true },
+        { x:1160,y:165, w:280,  h:14, oneWay:true, bridge:true },
         // Stepping catwalks (ladders / stairs)
         { x:260, y:450, w:90,   h:16, oneWay:true },   // Armory step 1
         { x:330, y:370, w:90,   h:16, oneWay:true },   // Armory step 2
@@ -673,6 +678,15 @@
         { x:1330, y:512, w:40, h:8, label:"LIFT" },
         { x:1910, y:512, w:40, h:8, label:"LIFT" },
         { x:2300, y:512, w:40, h:8, label:"LIFT" }
+      ];
+
+      state.junctions = [
+        { x:1080, y:470, r:16, active:false, label:'RELAY JUNCTION' },
+        { x:1960, y:470, r:16, active:false, label:'POWER JUNCTION' }
+      ];
+      state.vents = [
+        { x:900, y:270, w:74, h:240, strength:0.52 },
+        { x:2080, y:310, w:68, h:200, strength:0.46 }
       ];
 
       state.crates = [
@@ -704,7 +718,7 @@
     }
     else if (lvlNum === 2) {
       document.getElementById('levelTitle').textContent = "SECTOR 02: SUBTERRANEAN BIO-LABS";
-      document.getElementById('objectiveText').textContent = "Solve rooftop Gene Sequencer & Warp Core, navigate bioluminescent labs, and board the Freight Lift.";
+      document.getElementById('objectiveText').textContent = "Use catwalks and updrafts to avoid acid pools, solve the rooftop labs, then board the Freight Lift.";
       document.getElementById('bossHud').style.opacity = '0';
 
       state.buildings = [
@@ -721,6 +735,7 @@
         { x:-40,  y:0,   w:40,   h:600, solid:true },
         { x:2860, y:0,   w:40,   h:600, solid:true },
         { x:440,  y:220, w:480,  h:20, oneWay:true },  // Med-Bay roof (gene puzzle on top)
+        { x:760,  y:150, w:300,  h:14, oneWay:true, bridge:true }, // Bio-lab catwalk
         { x:240,  y:440, w:100,  h:16, oneWay:true },  // Med step 1
         { x:330,  y:340, w:90,   h:16, oneWay:true },  // Med step 2
         { x:1000, y:350, w:180,  h:18, oneWay:true },
@@ -738,6 +753,21 @@
         { x:1290, y:512, w:40, h:8, label:"LIFT" },
         { x:1900, y:512, w:40, h:8, label:"LIFT" },
         { x:2290, y:512, w:40, h:8, label:"LIFT" }
+      ];
+
+      // Acid blocks the ground route; catwalks and roofs provide the safe path.
+      state.hazards = [
+        { x:780,  y:504, w:240, h:16, damage:8, interval:42, lastDamage:-99 },
+        { x:1180, y:504, w:190, h:16, damage:8, interval:42, lastDamage:-99 },
+        { x:1930, y:504, w:230, h:16, damage:10, interval:42, lastDamage:-99 }
+      ];
+      state.junctions = [
+        { x:1060, y:470, r:16, active:false, label:'BIO-LAB JUNCTION' },
+        { x:2020, y:470, r:16, active:false, label:'SPORE-FIELD JUNCTION' }
+      ];
+      state.vents = [
+        { x:930,  y:260, w:72, h:250, strength:0.5 },
+        { x:2170, y:285, w:72, h:225, strength:0.48 }
       ];
 
       state.crates = [
@@ -773,7 +803,7 @@
     }
     else if (lvlNum === 3) {
       document.getElementById('levelTitle').textContent = "SECTOR 03: ORBITAL COMMAND CITADEL";
-      document.getElementById('objectiveText').textContent = "Forge DeathStorm Void Axe at Synthesis Altar, scale Citadel Spires, shatter Xenarch Armor, and eliminate the Core!";
+      document.getElementById('objectiveText').textContent = "Hack the high-altitude defense turrets, scale the Citadel Spires, then forge DeathStorm and eliminate the Core!";
 
       state.buildings = [
         { name:"DEATHSTORM FORGE ALTAR", sub:"SYNTHESIS ANVIL & OVERCHARGE", color:"#ec4899", x:400,y:220,w:460,h:300, fan:{x:500,y:200,angle:0}, door:{x:620,y:470,w:50,h:50,label:"FORGE AXE [E]"} },
@@ -790,6 +820,8 @@
         { x:320,  y:330, w:90,   h:16, oneWay:true },  // Forge step 2
         { x:920,  y:360, w:180,  h:18, oneWay:true },
         { x:1250, y:160, w:900,  h:20, oneWay:true },  // Citadel spires
+        { x:1420, y:115, w:230,  h:14, oneWay:true, bridge:true }, // turret access catwalk
+        { x:1830, y:115, w:230,  h:14, oneWay:true, bridge:true }, // turret access catwalk
         { x:1100, y:420, w:100,  h:16, oneWay:true },  // Citadel step 1
         { x:1180, y:290, w:90,   h:16, oneWay:true },  // Citadel step 2
         { x:1450, y:350, w:220,  h:18, oneWay:true },
@@ -803,6 +835,18 @@
         { x:2180, y:512, w:40, h:8, label:"LIFT" }
       ];
 
+      state.junctions = [
+        { x:1060, y:470, r:16, active:false, label:'CITADEL JUNCTION' },
+        { x:2210, y:470, r:16, active:false, label:'ARENA JUNCTION' }
+      ];
+      state.vents = [
+        { x:1120, y:250, w:70, h:255, strength:0.5 }
+      ];
+      state.turrets = [
+        { id:'turret_alpha', x:1535, y:88, r:18, hacked:false, cooldown:45, label:'ALPHA TURRET' },
+        { id:'turret_beta',  x:1945, y:88, r:18, hacked:false, cooldown:85, label:'BETA TURRET' }
+      ];
+
       state.crates = [
         { x:340,y:485,w:30,h:35,hp:30,opened:false },
         { x:800,y:185,w:30,h:35,hp:30,opened:false },
@@ -811,7 +855,9 @@
       ];
 
       state.interactables = [
-        { id:"altar_forge", x:640,y:480,r:45, title:"DeathStorm Synthesis Altar", active:true }
+        { id:"altar_forge", x:640,y:480,r:45, title:"DeathStorm Synthesis Altar", active:true },
+        { id:"turret_hack_alpha", turretId:"turret_alpha", x:1535,y:100,r:34, title:"Hack Alpha Turret [E]", active:true },
+        { id:"turret_hack_beta", turretId:"turret_beta", x:1945,y:100,r:34, title:"Hack Beta Turret [E]", active:true }
       ];
 
       state.drones = [
@@ -1495,6 +1541,7 @@
         else if (item.id==='puzzle_warp')    { document.getElementById('modalWarpPuzzle').classList.remove('hidden'); warpPuzzle.render(); }
         else if (item.id==='airlock_exit1'||item.id==='airlock_exit2') { triggerSectorClear(); }
         else if (item.id==='altar_forge')    { triggerForge(); }
+        else if (item.id.startsWith('turret_hack_')) { hackTurret(item.turretId, item); }
         return;
       }
     }
@@ -1517,6 +1564,34 @@
     spawnLootDrop(c.x+c.w/2,c.y+c.h/2,4);
     for(let i=0;i<15;i++) state.particles.push({x:c.x+c.w/2,y:c.y+c.h/2,vx:(Math.random()-.5)*6,vy:(Math.random()-.5)*6,r:3,color:'#f59e0b',life:25});
     showNotification("📦 SUPPLY CRATE SALVAGED!");
+  }
+
+  function hackTurret(turretId, terminal) {
+    const turret=state.turrets.find(t=>t.id===turretId);
+    if (!turret || turret.hacked) return;
+    turret.hacked=true;
+    terminal.active=false;
+    sfxBuy();
+    addCredits(40);
+    showNotification(`✓ ${turret.label} HACKED — PLASMA LOCK DISABLED`);
+    for(let i=0;i<20;i++) state.particles.push({x:turret.x,y:turret.y,vx:(Math.random()-.5)*5,vy:(Math.random()-.5)*5,r:3,color:'#22d3ee',life:28});
+  }
+
+  function electrifyJunction(junction) {
+    if (junction.active) return;
+    junction.active=true;
+    junction.timer=150;
+    state.shake=7;
+    sfxHit();
+    for (const drone of state.drones) {
+      if (drone.type==='crawler' && Math.hypot(drone.x-junction.x,drone.y-junction.y)<190) {
+        drone.stunTimer=120;
+        drone.hp-=18;
+        spawnFloatingText(drone.x,drone.y-20,'STUNNED','#facc15');
+      }
+    }
+    for(let i=0;i<26;i++) state.particles.push({x:junction.x,y:junction.y,vx:(Math.random()-.5)*9,vy:(Math.random()-.5)*9,r:2.5,color:'#facc15',life:30});
+    showNotification('⚡ JUNCTION DISCHARGE — NEARBY CRAWLERS STUNNED');
   }
 
   function closeModals() {
@@ -2065,6 +2140,25 @@
       }
     }
 
+    // Acid pools damage on a cadence so crossing them is risky but readable.
+    for (const hazard of state.hazards) {
+      const standingInAcid = p.x+p.width>hazard.x && p.x<hazard.x+hazard.w && p.y+p.height>hazard.y && p.y<hazard.y+hazard.h+8;
+      if (standingInAcid && gameTick-hazard.lastDamage>=hazard.interval) {
+        hazard.lastDamage=gameTick;
+        damagePlayer(hazard.damage);
+        spawnFloatingText(p.x,p.y-12,`-${hazard.damage} ACID`,'#86efac');
+      }
+    }
+
+    // Updrafts cap falling speed and add a gentle lift while the player remains in the airflow.
+    for (const vent of state.vents) {
+      const inUpdraft = p.x+p.width>vent.x && p.x<vent.x+vent.w && p.y+p.height>vent.y && p.y<vent.y+vent.h;
+      if (inUpdraft) {
+        p.vy=Math.min(p.vy,2.2)-vent.strength;
+        if(gameTick%7===0) state.particles.push({x:vent.x+Math.random()*vent.w,y:p.y+p.height,vx:(Math.random()-.5)*1.5,vy:-3-Math.random()*2,r:2,color:'#67e8f9',life:18});
+      }
+    }
+
     // Shield regen
     if (p.shield<p.maxShield) {
       p.shield+=0.07;
@@ -2099,8 +2193,21 @@
     // Bullets
     for(let i=state.bullets.length-1;i>=0;i--){
       const b=state.bullets[i];
+      if (b.seeking) {
+        const targetX=p.x+p.width/2, targetY=p.y+p.height/2;
+        const targetAngle=Math.atan2(targetY-b.y,targetX-b.x);
+        b.vx+=Math.cos(targetAngle)*0.28;
+        b.vy+=Math.sin(targetAngle)*0.28;
+        const speed=Math.hypot(b.vx,b.vy);
+        if(speed>b.maxSpeed){b.vx=b.vx/speed*b.maxSpeed;b.vy=b.vy/speed*b.maxSpeed;}
+      }
       b.x+=b.vx; b.y+=b.vy; b.life--;
       for(const plat of state.platforms){ if(b.x>plat.x&&b.x<plat.x+plat.w&&b.y>plat.y&&b.y<plat.y+plat.h){b.life=0;break;} }
+      if (!b.isEnemy) {
+        for(const junction of state.junctions){
+          if(!junction.active&&Math.hypot(junction.x-b.x,junction.y-b.y)<junction.r+6){ electrifyJunction(junction); b.life=0; break; }
+        }
+      }
       for(const c of state.crates){ if(!c.opened&&b.x>c.x&&b.x<c.x+c.w&&b.y>c.y&&b.y<c.y+c.h){c.hp-=b.damage;b.life=0;if(c.hp<=0)breakCrate(c);break;} }
       if (!b.isEnemy) {
         for(const d of state.drones){
@@ -2124,19 +2231,33 @@
       if(b.life<=0) state.bullets.splice(i,1);
     }
 
+    // Citadel turrets keep firing tracking plasma until the adjacent terminal is hacked.
+    for(const turret of state.turrets){
+      if(turret.hacked) continue;
+      turret.cooldown--;
+      if(turret.cooldown<=0){
+        const dx=p.x+p.width/2-turret.x, dy=p.y+p.height/2-turret.y;
+        const angle=Math.atan2(dy,dx);
+        const speed=5.2;
+        state.bullets.push({x:turret.x,y:turret.y+12,vx:Math.cos(angle)*speed,vy:Math.sin(angle)*speed,damage:18,isEnemy:true,seeking:true,maxSpeed:7,color:'#c084fc',life:150});
+        turret.cooldown=72;
+        sfxShoot(1);
+      }
+    }
+
     // Drones (aliens)
     for(let i=state.drones.length-1;i>=0;i--){
       const d=state.drones[i];
-      d.x+=d.vx;
-      if(Math.random()<0.015) d.vx*=-1;
+      if(d.stunTimer>0){ d.stunTimer--; d.vx*=0.82; }
+      else { d.x+=d.vx; if(Math.random()<0.015) d.vx*=-1; }
       // Clamp to level bounds
       d.x=Math.max(0,Math.min(3000,d.x));
-      if((d.type==='spitter'||d.type==='sentinel')&&Math.random()<0.02){
+      if(d.stunTimer<=0&&(d.type==='spitter'||d.type==='sentinel')&&Math.random()<0.02){
         const dx=(p.x+p.width/2)-d.x, dy=(p.y+p.height/2)-d.y;
         const ang=Math.atan2(dy,dx);
         state.bullets.push({x:d.x,y:d.y,vx:Math.cos(ang)*(d.type==='sentinel'?10:7),vy:Math.sin(ang)*(d.type==='sentinel'?10:7),damage:d.type==='sentinel'?22:14,isEnemy:true,color:d.type==='sentinel'?'#ef4444':'#a855f7',life:80});
       }
-      if(!p.isDashing&&Math.hypot(d.x-(p.x+p.width/2),d.y-(p.y+p.height/2))<d.r+14) damagePlayer(d.isMiniBoss?24:12);
+      if(d.stunTimer<=0&&!p.isDashing&&Math.hypot(d.x-(p.x+p.width/2),d.y-(p.y+p.height/2))<d.r+14) damagePlayer(d.isMiniBoss?24:12);
       if(d.hp<=0){
         state.kills++;
         spawnLootDrop(d.x,d.y,d.isMiniBoss?8:3);
@@ -2336,6 +2457,29 @@
         ctx.strokeStyle='rgba(30,41,59,0.3)'; ctx.lineWidth=1;
         for(let gx=sx+40;gx<sx+plat.w;gx+=40){ ctx.beginPath(); ctx.moveTo(gx,sy); ctx.lineTo(gx,sy+plat.h); ctx.stroke(); }
       }
+      if(plat.bridge){
+        ctx.strokeStyle='#fbbf24aa'; ctx.lineWidth=1.5;
+        ctx.beginPath(); ctx.moveTo(sx,sy+plat.h); ctx.quadraticCurveTo(sx+plat.w/2,sy+42,sx+plat.w,sy+plat.h); ctx.stroke();
+        for(let cable=22;cable<plat.w;cable+=36){ ctx.beginPath(); ctx.moveTo(sx+cable,sy+plat.h); ctx.lineTo(sx+cable,sy+20); ctx.stroke(); }
+      }
+    }
+
+    // ── 3A. ENVIRONMENTAL HAZARDS & TRAVERSAL ────────────────────────
+    for(const hazard of state.hazards){
+      const hx=hazard.x-camX, hy=hazard.y-camY;
+      const pulse=0.5+0.5*Math.sin(t*0.15+hazard.x);
+      ctx.shadowColor='#84cc16'; ctx.shadowBlur=14*pulse;
+      ctx.fillStyle=`rgba(101,163,13,${0.45+0.25*pulse})`; ctx.fillRect(hx,hy,hazard.w,hazard.h);
+      ctx.fillStyle='#d9f99d';
+      for(let bubble=8;bubble<hazard.w;bubble+=34){ const bob=Math.sin(t*0.12+bubble)*3; ctx.beginPath(); ctx.arc(hx+bubble,hy+7+bob,2+pulse*2,0,Math.PI*2); ctx.fill(); }
+      ctx.shadowBlur=0;
+    }
+    for(const vent of state.vents){
+      const vx=vent.x-camX, vy=vent.y-camY;
+      ctx.fillStyle='rgba(8,47,73,0.42)'; ctx.fillRect(vx,vy,vent.w,vent.h);
+      ctx.strokeStyle='#22d3ee88'; ctx.lineWidth=1.5; ctx.strokeRect(vx,vy,vent.w,vent.h);
+      for(let stream=12;stream<vent.h;stream+=38){ const sway=Math.sin(t*0.1+stream)*8; ctx.strokeStyle='rgba(103,232,249,0.42)'; ctx.beginPath(); ctx.moveTo(vx+vent.w/2+sway,vy+vent.h-stream); ctx.lineTo(vx+vent.w/2-sway,vy+vent.h-stream-20); ctx.stroke(); }
+      ctx.fillStyle='#67e8f9'; ctx.font='bold 8px monospace'; ctx.fillText('UPDRAFT',vx-4,vy-6);
     }
 
     // ── 3B. GRAVITY LIFT PADS ─────────────────────────────────────────
@@ -2407,6 +2551,31 @@
       ctx.shadowBlur=0;
       ctx.fillStyle='#67e8f9'; ctx.font='bold 9px monospace';
       ctx.fillText(term.title,tx-40,ty-28);
+    }
+
+    // Shootable junction boxes retain their charge until discharged.
+    for(const junction of state.junctions){
+      const jx=junction.x-camX, jy=junction.y-camY;
+      const charge=junction.active ? 0.25+0.2*Math.sin(t*0.18) : 0.7+0.3*Math.sin(t*0.11);
+      ctx.shadowColor=junction.active?'#facc15':'#38bdf8'; ctx.shadowBlur=14*charge;
+      ctx.fillStyle=junction.active?'#713f12':'#0c4a6e'; ctx.fillRect(jx-10,jy-13,20,26);
+      ctx.strokeStyle=junction.active?'#facc15':'#38bdf8'; ctx.lineWidth=2; ctx.strokeRect(jx-10,jy-13,20,26);
+      ctx.fillStyle=junction.active?'#fef08a':'#e0f2fe'; ctx.fillRect(jx-4,jy-6,8,5);
+      ctx.shadowBlur=0; ctx.fillStyle='#bae6fd'; ctx.font='bold 7px monospace'; ctx.fillText(junction.label,jx-27,jy-19);
+    }
+
+    // High-altitude turret housings visibly change state once their terminals are hacked.
+    for(const turret of state.turrets){
+      const tx=turret.x-camX, ty=turret.y-camY;
+      const turretColor=turret.hacked?'#22d3ee':'#c084fc';
+      ctx.save(); ctx.translate(tx,ty);
+      ctx.shadowColor=turretColor; ctx.shadowBlur=turret.hacked?8:18;
+      ctx.fillStyle=turret.hacked?'#164e63':'#3b0764'; ctx.fillRect(-15,-10,30,20);
+      ctx.strokeStyle=turretColor; ctx.lineWidth=2; ctx.strokeRect(-15,-10,30,20);
+      ctx.rotate(turret.hacked?0:Math.atan2((p.y+p.height/2)-turret.y,(p.x+p.width/2)-turret.x));
+      ctx.fillStyle=turretColor; ctx.fillRect(0,-4,24,8); ctx.fillRect(12,-7,8,14);
+      ctx.restore(); ctx.shadowBlur=0;
+      ctx.fillStyle=turretColor; ctx.font='bold 8px monospace'; ctx.fillText(turret.hacked?'HACKED':turret.label,tx-32,ty-24);
     }
 
     // ── 7. COMPANION DRONE ────────────────────────────────────────────
