@@ -1152,7 +1152,7 @@
     const laserPuzzle = {
       solved: false,
       mirrors: [
-        { x: 120, y: 70, angle: 135 },
+        { x: 120, y: 70, angle: 0 },
         { x: 120, y: 190, angle: 90 },
         { x: 48, y: 190, angle: 0 },
         { x: 48, y: 100, angle: 90 }
@@ -1270,8 +1270,8 @@
 
     function handleLaserCanvasClick(e) {
       const rect = e.target.getBoundingClientRect();
-      const clickX = e.clientX - rect.left;
-      const clickY = e.clientY - rect.top;
+      const clickX = (e.clientX - rect.left) * e.target.width / rect.width;
+      const clickY = (e.clientY - rect.top) * e.target.height / rect.height;
 
       laserPuzzle.mirrors.forEach(m => {
         if (Math.hypot(m.x - clickX, m.y - clickY) < 25) {
