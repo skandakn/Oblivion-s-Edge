@@ -1,0 +1,19 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!129 &1
+PlayerSettings:
+  m_ObjectHideFlags: 0
+  serializedVersion: 26
+  productGUID: 3f81e7d24a914b1ebc4819a823a0df45
+  AndroidProfiler: 0
+  defaultScreenOrientation: 3
+  targetDevice: 2
+  useOnDemandResources: 0
+  currentPlatform: 
+  companyName: Oblivion Team
+  productName: Oblivion's Edge
+  defaultCursor: {fileID: 0}
+  cursorHotspot: {x: 0, y: 0}
+  m_defaultShader: {fileID: 0}
+  defaultIcon: {fileID: 0}
+  defaultIsNative2D: 1

@@ -1,0 +1,35 @@
+# =========================================================================
+# Unity Official .gitattributes for Oblivion's Edge
+# =========================================================================
+
+# Unity YAML text files
+*.meta text eol=lf
+*.unity text eol=lf
+*.prefab text eol=lf
+*.asset text eol=lf
+*.mat text eol=lf
+*.anim text eol=lf
+*.controller text eol=lf
+*.overrideController text eol=lf
+*.mask text eol=lf
+*.physicMaterial text eol=lf
+*.physicsMaterial2D text eol=lf
+*.guiskin text eol=lf
+*.fontsettings text eol=lf
+*.cs text diff=csharp eol=crlf
+*.cginc text eol=lf
+*.shader text eol=lf
+
+# Raw binary assets handled cleanly
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.tga binary
+*.psd binary
+*.wav binary
+*.mp3 binary
+*.ogg binary
+*.fbx binary
+*.blend binary
+*.ttf binary
+*.otf binary
