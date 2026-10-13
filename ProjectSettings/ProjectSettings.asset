@@ -17,3 +17,4 @@ PlayerSettings:
   m_defaultShader: {fileID: 0}
   defaultIcon: {fileID: 0}
   defaultIsNative2D: 1
+  activeInputHandler: 2
