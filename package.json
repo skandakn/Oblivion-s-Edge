@@ -1,0 +1,17 @@
+{
+  "name": "oblivions-edge",
+  "version": "1.0.0",
+  "description": "Oblivion's Edge 2D Sci-Fi Survival Horror Local Simulator",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "preview": "node server.js"
+  },
+  "keywords": [
+    "unity",
+    "game",
+    "simulator"
+  ],
+  "author": "Oblivions Edge Team",
+  "license": "MIT"
+}
