@@ -1,0 +1,239 @@
+﻿%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!1 &100000
+GameObject:
+  m_ObjectHideFlags: 0
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 400000}
+  - component: {fileID: 11400000}
+  m_Layer: 0
+  m_Name: Sector4_BioContainmentNest
+  m_TagString: Untagged
+  m_IsActive: 1
+--- !u!4 &400000
+Transform:
+  m_ObjectHideFlags: 0
+  m_GameObject: {fileID: 100000}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 24, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_Children:
+  - {fileID: 400001}
+  - {fileID: 400002}
+  - {fileID: 400003}
+  - {fileID: 400004}
+  - {fileID: 400005}
+  - {fileID: 400006}
+  - {fileID: 400007}
+  m_Father: {fileID: 0}
+  m_RootOrder: 0
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_GameObject: {fileID: 100000}
+  m_Enabled: 1
+  m_Script: {fileID: 11500000, guid: e1100000000000000000000000000001, type: 3}
+  _zoneType: 4
+  _zoneName: Sector 4 - Bio-Containment Nest (Boss Arena & Forge)
+  _zoneSize: {x: 28, y: 12}
+--- !u!1 &100001
+GameObject:
+  m_ObjectHideFlags: 0
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 400001}
+  - component: {fileID: 6100001}
+  m_Layer: 8
+  m_Name: Floor_Arena
+  m_TagString: Untagged
+  m_IsActive: 1
+--- !u!4 &400001
+Transform:
+  m_ObjectHideFlags: 0
+  m_GameObject: {fileID: 100001}
+  m_LocalPosition: {x: 0, y: -4.5, z: 0}
+  m_LocalScale: {x: 28, y: 1, z: 1}
+  m_Children: []
+  m_Father: {fileID: 400000}
+--- !u!61 &6100001
+BoxCollider2D:
+  m_ObjectHideFlags: 0
+  m_GameObject: {fileID: 100001}
+  m_Enabled: 1
+  m_IsTrigger: 0
+  m_Size: {x: 1, y: 1}
+--- !u!1 &100002
+GameObject:
+  m_ObjectHideFlags: 0
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 400002}
+  - component: {fileID: 6100002}
+  m_Layer: 8
+  m_Name: Ceiling_Arena
+  m_TagString: Untagged
+  m_IsActive: 1
+--- !u!4 &400002
+Transform:
+  m_ObjectHideFlags: 0
+  m_GameObject: {fileID: 100002}
+  m_LocalPosition: {x: 0, y: 5.5, z: 0}
+  m_LocalScale: {x: 28, y: 1, z: 1}
+  m_Children: []
+  m_Father: {fileID: 400000}
+--- !u!61 &6100002
+BoxCollider2D:
+  m_ObjectHideFlags: 0
+  m_GameObject: {fileID: 100002}
+  m_Enabled: 1
+  m_IsTrigger: 0
+  m_Size: {x: 1, y: 1}
+--- !u!1 &100003
+GameObject:
+  m_ObjectHideFlags: 0
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 400003}
+  - component: {fileID: 6100003}
+  m_Layer: 8
+  m_Name: RightWall_Arena
+  m_TagString: Untagged
+  m_IsActive: 1
+--- !u!4 &400003
+Transform:
+  m_ObjectHideFlags: 0
+  m_GameObject: {fileID: 100003}
+  m_LocalPosition: {x: 14, y: 0.5, z: 0}
+  m_LocalScale: {x: 1, y: 11, z: 1}
+  m_Children: []
+  m_Father: {fileID: 400000}
+--- !u!61 &6100003
+BoxCollider2D:
+  m_ObjectHideFlags: 0
+  m_GameObject: {fileID: 100003}
+  m_Enabled: 1
+  m_IsTrigger: 0
+  m_Size: {x: 1, y: 1}
+--- !u!1 &100004
+GameObject:
+  m_ObjectHideFlags: 0
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 400004}
+  m_Layer: 7
+  m_Name: BossSpawnLocation
+  m_TagString: Boss
+  m_IsActive: 1
+--- !u!4 &400004
+Transform:
+  m_ObjectHideFlags: 0
+  m_GameObject: {fileID: 100004}
+  m_LocalPosition: {x: 0, y: -2, z: 0}
+  m_LocalScale: {x: 2, y: 2, z: 1}
+  m_Children: []
+  m_Father: {fileID: 400000}
+--- !u!1 &100005
+GameObject:
+  m_ObjectHideFlags: 0
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 400005}
+  - component: {fileID: 5800005}
+  - component: {fileID: 11400005}
+  m_Layer: 9
+  m_Name: CoreExtractionAltar
+  m_TagString: Interactable
+  m_IsActive: 1
+--- !u!4 &400005
+Transform:
+  m_ObjectHideFlags: 0
+  m_GameObject: {fileID: 100005}
+  m_LocalPosition: {x: -8, y: -3, z: 0}
+  m_LocalScale: {x: 1.4, y: 1.4, z: 1}
+  m_Children: []
+  m_Father: {fileID: 400000}
+--- !u!58 &5800005
+CircleCollider2D:
+  m_ObjectHideFlags: 0
+  m_GameObject: {fileID: 100005}
+  m_Enabled: 1
+  m_IsTrigger: 1
+  m_Radius: 1.8
+--- !u!114 &11400005
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_GameObject: {fileID: 100005}
+  m_Enabled: 1
+  m_Script: {fileID: 11500000, guid: e1100000000000000000000000000008, type: 3}
+  _coreItemId: deathstorm_core
+  _extractionHoldTime: 1
+--- !u!1 &100006
+GameObject:
+  m_ObjectHideFlags: 0
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 400006}
+  - component: {fileID: 5800006}
+  - component: {fileID: 11400006}
+  m_Layer: 9
+  m_Name: DeathStormForgeAltarStation
+  m_TagString: Interactable
+  m_IsActive: 1
+--- !u!4 &400006
+Transform:
+  m_ObjectHideFlags: 0
+  m_GameObject: {fileID: 100006}
+  m_LocalPosition: {x: 8, y: -3, z: 0}
+  m_LocalScale: {x: 1.5, y: 1.5, z: 1}
+  m_Children: []
+  m_Father: {fileID: 400000}
+--- !u!58 &5800006
+CircleCollider2D:
+  m_ObjectHideFlags: 0
+  m_GameObject: {fileID: 100006}
+  m_Enabled: 1
+  m_IsTrigger: 1
+  m_Radius: 2
+--- !u!114 &11400006
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_GameObject: {fileID: 100006}
+  m_Enabled: 1
+  m_Script: {fileID: 11500000, guid: e1100000000000000000000000000009, type: 3}
+--- !u!1 &100007
+GameObject:
+  m_ObjectHideFlags: 0
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 400007}
+  - component: {fileID: 6100007}
+  - component: {fileID: 11400007}
+  m_Layer: 8
+  m_Name: ArenaCoverPillar
+  m_TagString: Untagged
+  m_IsActive: 1
+--- !u!4 &400007
+Transform:
+  m_ObjectHideFlags: 0
+  m_GameObject: {fileID: 100007}
+  m_LocalPosition: {x: -4, y: -3, z: 0}
+  m_LocalScale: {x: 1.8, y: 1.8, z: 1}
+  m_Children: []
+  m_Father: {fileID: 400000}
+--- !u!61 &6100007
+BoxCollider2D:
+  m_ObjectHideFlags: 0
+  m_GameObject: {fileID: 100007}
+  m_Enabled: 1
+  m_IsTrigger: 0
+  m_Size: {x: 1.2, y: 1.2}
+--- !u!114 &11400007
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_GameObject: {fileID: 100007}
+  m_Enabled: 1
+  m_Script: {fileID: 11500000, guid: e1100000000000000000000000000004, type: 3}
+  _coverId: ArenaPillar
+  _providesStealth: 1
+  _physicalCollider: {fileID: 6100007}
