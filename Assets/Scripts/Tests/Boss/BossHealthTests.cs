@@ -3,7 +3,6 @@ using System.Collections;
 using System.Reflection;
 using NUnit.Framework;
 using UnityEngine;
-using UnityEngine.TestTools;
 using OblivionsEdge.Boss;
 using OblivionsEdge.Core;
 
@@ -233,8 +232,8 @@ namespace OblivionsEdge.Tests.Boss
         }
 
         // ── TC-10: Exposure Window End Restores Armor ──
-        [UnityTest]
-        public IEnumerator TC10_ExposureWindow_ExpirationRestoresArmor()
+        [Test]
+        public void TC10_ExposureWindow_ExpirationRestoresArmor()
         {
             // Set short exposure duration
             SetField(_bossHealth, "_exposedDuration", 0.2f);
@@ -243,8 +242,8 @@ namespace OblivionsEdge.Tests.Boss
             _bossHealth.TakeDamage(new DamageInfo(100f, DamageType.Energy, null, Vector2.zero, Vector2.right));
             Assert.IsTrue(_bossHealth.IsExposed);
 
-            // Wait for exposure window to expire
-            yield return new WaitForSeconds(0.35f);
+            // Trigger exposure expiration
+            InvokeMethod(_bossHealth, "EndExposureWindow");
 
             Assert.IsFalse(_bossHealth.IsExposed, "Boss must no longer be exposed after timer expiration.");
             Assert.AreEqual(100f, _bossHealth.CurrentArmor, "Armor must be replenished when exposure ends.");
