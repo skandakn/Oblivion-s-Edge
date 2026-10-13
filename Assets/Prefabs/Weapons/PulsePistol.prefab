@@ -57,10 +57,10 @@ MonoBehaviour:
   _damage: 15
   _fireRate: 4.5
   _knockbackForce: 4
-  _magazineCapacity: 12
-  _startingMagazineAmmo: 12
-  _startingReserveAmmo: 48
-  _maxReserveAmmo: 120
+  _magazineCapacity: 24
+  _startingMagazineAmmo: 24
+  _startingReserveAmmo: 96
+  _maxReserveAmmo: 240
   _reloadDuration: 1.2
   _readMouseInput: 1
   _reloadKey: 114
