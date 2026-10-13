@@ -2,6 +2,7 @@ using System;
 using UnityEngine;
 using OblivionsEdge.Boss;
 using OblivionsEdge.Core;
+using OblivionsEdge.Inventory;
 
 namespace OblivionsEdge.DeathStorm
 {
@@ -13,10 +14,10 @@ namespace OblivionsEdge.DeathStorm
     //    · Perform a directional axe attack toward a configurable weak-point.
     //    · Enforce attack cooldown.
     //    · Cast an overlap hitbox in the swing arc; check weak-point area hit.
-    //    · Require the boss to be in VulnerableStun phase AND the player to own
-    //      the DeathStorm weapon before the finishing strike is valid.
-    //    · Trigger IBossController.TransitionToPhase(Defeated) only on a valid
-    //      DeathStorm strike against the correct weak-point.
+    //    · Require the boss to be in VulnerableStun / Exposed phase AND the player
+    //      to own the DeathStorm weapon before the finishing strike is valid.
+    //    · Trigger IBossController.TransitionToPhase(Defeated) and GameManager Victory
+    //      sequence on a valid DeathStorm strike against the correct weak-point.
     //    · Implements IWeapon so the existing IWeaponHandler (Member 2) can
     //      equip and fire it through the standard pipeline.
     //
@@ -42,7 +43,7 @@ namespace OblivionsEdge.DeathStorm
         [Tooltip("Radius of the overlap-circle hitbox for each swing.")]
         [SerializeField] private float _hitboxRadius   = 1.5f;
 
-        [Tooltip("LayerMask that the swing hitbox queries (Boss layer).")]
+        [Tooltip("LayerMask that the swing hitbox queries (Boss layer). Defaults to all layers if 0.")]
         [SerializeField] private LayerMask _hitLayers;
 
         [Tooltip("Angular tolerance (degrees) within which a direction is 'correct'.")]
@@ -55,8 +56,12 @@ namespace OblivionsEdge.DeathStorm
         [Tooltip("Radius of the weak-point zone (world units).")]
         [SerializeField] private float _weakPointRadius = 0.8f;
 
+        [Header("Input")]
+        [Tooltip("Whether to read player attack input directly when weapon is active.")]
+        [SerializeField] private bool _readInput = true;
+
         [Header("Dependencies")]
-        [Tooltip("Member 3's IBossController implementation.")]
+        [Tooltip("Member 3/5 IBossController implementation.")]
         [SerializeField] private MonoBehaviour _bossControllerMono;
 
         [Tooltip("The DeathStormCrafting component — used to check HasDeathStorm.")]
@@ -96,21 +101,53 @@ namespace OblivionsEdge.DeathStorm
         {
             _boss = _bossControllerMono as IBossController;
 
+            // Auto-resolve boss if unassigned
             if (_boss == null)
-                Debug.LogWarning("[AxeCombat] BossController not assigned or does not implement IBossController.");
+            {
+                var bossGo = GameObject.FindGameObjectWithTag(GameConstants.TagBoss);
+                if (bossGo != null)
+                {
+                    _boss = bossGo.GetComponentInParent<IBossController>();
+                    if (_boss == null) _boss = bossGo.GetComponentInChildren<IBossController>();
+                }
+            }
+
+            // Auto-resolve crafting controller if unassigned
             if (_craftingController == null)
-                Debug.LogWarning("[AxeCombat] DeathStormCrafting reference not set.");
+            {
+                _craftingController = FindFirstObjectByType<DeathStormCrafting>();
+            }
+
+            // Default hit layers to all layers if left as Nothing/0
+            if (_hitLayers.value == 0)
+            {
+                _hitLayers = ~0;
+            }
         }
 
         private void Update()
         {
-            if (!_onCooldown) return;
-
-            _cooldownTimer -= Time.deltaTime;
-            if (_cooldownTimer <= 0f)
+            if (_onCooldown)
             {
-                _onCooldown    = false;
-                _cooldownTimer = 0f;
+                _cooldownTimer -= Time.deltaTime;
+                if (_cooldownTimer <= 0f)
+                {
+                    _onCooldown    = false;
+                    _cooldownTimer = 0f;
+                }
+            }
+
+            if (_readInput && (Input.GetButtonDown(GameConstants.InputFirePrimary) || Input.GetMouseButtonDown(0)))
+            {
+                Vector2 origin = transform.position;
+                Vector2 mouseWorld = Camera.main != null
+                    ? (Vector2)Camera.main.ScreenToWorldPoint(Input.mousePosition)
+                    : origin + Vector2.up;
+                Vector2 dir = (mouseWorld - origin).normalized;
+                if (dir.sqrMagnitude > 0.001f)
+                {
+                    TryFire(origin, dir);
+                }
             }
         }
 
@@ -143,7 +180,9 @@ namespace OblivionsEdge.DeathStorm
             bool bossHit = false;
             foreach (Collider2D col in hits)
             {
-                if (col.CompareTag(GameConstants.TagBoss))
+                if (col.CompareTag(GameConstants.TagBoss) ||
+                    col.GetComponentInParent<IBossController>() != null ||
+                    col.GetComponentInParent<AlienBossAI>() != null)
                 {
                     bossHit = true;
                     break;
@@ -155,7 +194,7 @@ namespace OblivionsEdge.DeathStorm
             // ── 2. Validate attack preconditions ───────────────────────
             if (!IsBossExposed())
             {
-                Debug.Log("[AxeCombat] Boss is not in VulnerableStun — strike ignored.");
+                Debug.Log("[AxeCombat] Boss is not exposed / vulnerable — strike ignored.");
                 OnInvalidStrike?.Invoke();
                 return false;
             }
@@ -192,6 +231,17 @@ namespace OblivionsEdge.DeathStorm
             Debug.Log("[AxeCombat] ★ Valid DeathStorm strike — boss permanently defeated!");
             OnDeathStormStrike?.Invoke();
             _boss?.TransitionToPhase(BossPhase.Defeated);
+            if (_boss is MonoBehaviour bm)
+            {
+                bm.SendMessage("NotifyBossDefeated", SendMessageOptions.DontRequireReceiver);
+            }
+
+            // Trigger victory sequence in GameManager
+            if (GameManager.Instance != null)
+            {
+                GameManager.Instance.SetState(GameState.Victory);
+            }
+
             return true;
         }
 
@@ -210,20 +260,46 @@ namespace OblivionsEdge.DeathStorm
 
         private bool IsBossExposed()
         {
-            if (_boss == null) return false;
-            return _boss.CurrentPhase == BossPhase.VulnerableStun;
+            if (_boss != null && _boss.CurrentPhase == BossPhase.VulnerableStun)
+                return true;
+
+            // Check AlienBossAI via duck-typing or direct component check
+            GameObject bossObj = (_boss as MonoBehaviour)?.gameObject ?? GameObject.FindGameObjectWithTag(GameConstants.TagBoss);
+            if (bossObj != null)
+            {
+                AlienBossAI alienAI = bossObj.GetComponentInParent<AlienBossAI>();
+                if (alienAI != null && alienAI.IsArmorExposed)
+                    return true;
+            }
+
+            return false;
         }
 
         private bool HasDeathStormWeapon()
         {
-            if (_craftingController == null) return false;
-            return _craftingController.HasDeathStorm;
+            if (_craftingController != null && _craftingController.HasDeathStorm)
+                return true;
+
+            // Fallback: check player inventory for "deathstorm" item
+            var player = GameObject.FindGameObjectWithTag(GameConstants.TagPlayer);
+            if (player != null)
+            {
+                var inv = player.GetComponentInParent<IInventory>();
+                if (inv != null && (inv.HasItem("deathstorm") || (inv is InventorySystem isys && isys.HasDeathStorm)))
+                    return true;
+            }
+
+            return false;
         }
 
         private Vector2 GetWeakPointWorld()
         {
             if (_boss is MonoBehaviour bm && bm != null)
                 return (Vector2)bm.transform.position + _weakPointOffset;
+
+            var bossGo = GameObject.FindGameObjectWithTag(GameConstants.TagBoss);
+            if (bossGo != null)
+                return (Vector2)bossGo.transform.position + _weakPointOffset;
 
             return (Vector2)transform.position + _weakPointOffset;
         }
@@ -235,7 +311,7 @@ namespace OblivionsEdge.DeathStorm
             Gizmos.color = Color.cyan;
             Gizmos.DrawWireSphere(transform.position, _hitboxRadius);
 
-            // Weak-point zone (approximate — boss pivot unknown at edit time)
+            // Weak-point zone
             Gizmos.color = Color.red;
             Gizmos.DrawWireSphere((Vector2)transform.position + _weakPointOffset, _weakPointRadius);
         }
