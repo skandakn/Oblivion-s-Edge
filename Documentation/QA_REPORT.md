@@ -1,6 +1,6 @@
 # UI QA report
 
-Date: 2026-10-13  
+Date: 2026-10-13
 Branch: `feature/ui-qa`
 
 ## Executed checks
