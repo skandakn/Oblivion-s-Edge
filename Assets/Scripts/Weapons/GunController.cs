@@ -194,7 +194,12 @@ namespace OblivionsEdge.Weapons
 
             if (_currentAmmo <= 0)
             {
-                if (!_dryFireReportedForInput)
+                if (!_isReloading && _reserveAmmo > 0)
+                {
+                    StartReload();
+                }
+
+                if (!_isReloading && !_dryFireReportedForInput)
                 {
                     OnDryFire?.Invoke();
                     _dryFireReportedForInput = true;
@@ -255,6 +260,13 @@ namespace OblivionsEdge.Weapons
             PlayMuzzleFlash(angle);
             OnAmmoChanged?.Invoke(_currentAmmo, _magazineCapacity);
             OnFired?.Invoke();
+
+            // Automatically reload after the last round; StartReload preserves the manual R path.
+            if (_currentAmmo == 0)
+            {
+                StartReload();
+            }
+
             return true;
         }
 
