@@ -151,6 +151,8 @@ namespace OblivionsEdge.Boss
         // ── IBossArmorSource Events ──
         public event Action<float, float> OnArmorChanged;
         public event Action OnArmorDepleted;
+        /// <summary>Fires once when the Bio-Armor layer reaches zero and enters the exposed phase.</summary>
+        public event Action OnArmorBroken;
 
         // ── IBossController Events ──
         public event Action<BossPhase> OnPhaseChanged;
@@ -163,6 +165,10 @@ namespace OblivionsEdge.Boss
         public event Action OnWeakPointClosed;
         public event Action OnArmorRestored;
         public event Action OnCoreReleased;
+        /// <summary>Signals Core Puzzle and inventory listeners that Core extraction is now allowed.</summary>
+        public event Action OnCoreExtractionAvailable;
+        /// <summary>Provides the spawned Core pickup to inventory/pickup listeners, or null when scene wiring supplies no prefab.</summary>
+        public event Action<GameObject> OnCoreEjected;
         public event Action<GameObject> OnCoreSpawned;
         public event Action<Vector2> OnVoidPounceTriggered;
         public event Action<GameObject, DamageInfo> OnAttackDelivered;
@@ -388,6 +394,27 @@ namespace OblivionsEdge.Boss
             Log("[BossHealth] Attack deflected! Armor is regenerating and weak-point is shielded.");
         }
 
+        /// <summary>
+        /// Applies an environmental overload directly to the Bio-Armor layer through the normal
+        /// damage pipeline. This keeps weapons and arena hazards subject to identical armor rules.
+        /// </summary>
+        public void ApplyEnvironmentalOverload(float amount, Vector2 hitPoint)
+        {
+            if (amount <= 0f || !_isAlive)
+            {
+                return;
+            }
+
+            TakeDamage(new DamageInfo(
+                amount,
+                DamageType.EMP,
+                gameObject,
+                hitPoint,
+                Vector2.zero,
+                0f,
+                false));
+        }
+
         public void Heal(float amount)
         {
             if (!_isAlive || amount <= 0f)
@@ -409,6 +436,7 @@ namespace OblivionsEdge.Boss
             Log("[BossHealth] ★ ARMOR FRACTURED! Initiating EXPOSED weak-point state.");
 
             OnArmorDepleted?.Invoke();
+            OnArmorBroken?.Invoke();
             OnArmorDepletedEvent?.Invoke();
 
             ExposeWeakPoint(_exposedDuration);
@@ -522,7 +550,9 @@ namespace OblivionsEdge.Boss
             NotifyAI("NotifyCoreReleased");
 
             OnCoreReleased?.Invoke();
+            OnCoreExtractionAvailable?.Invoke();
             OnCoreReleasedEvent?.Invoke();
+            OnCoreEjected?.Invoke(spawnedCore);
             if (spawnedCore != null)
             {
                 OnCoreSpawned?.Invoke(spawnedCore);
