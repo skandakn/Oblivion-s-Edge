@@ -922,15 +922,18 @@
       c.shadowBlur=0; c.restore();
       c.fillStyle='#64748b'; c.beginPath(); c.arc(m.x,m.y,5,0,Math.PI*2); c.fill();
     });
-    // Build the route only as far as the first correctly aligned mirror.
+    // The beam always travels to the first mirror, then continues only through
+    // mirrors aligned in sequence.
     const solution=[45,135,225,315];
     const route=[{x:48,y:66}];
+    let alignedMirrors=0;
     for(let i=0;i<laserPuzzle.mirrors.length;i++) {
       const m=laserPuzzle.mirrors[i];
-      if(m.angle%360!==solution[i]) break;
       route.push({x:m.x,y:m.y});
+      if(m.angle%360!==solution[i]) break;
+      alignedMirrors++;
     }
-    const isConnected=route.length===laserPuzzle.mirrors.length+1;
+    const isConnected=alignedMirrors===laserPuzzle.mirrors.length;
     if(isConnected) route.push({x:laserPuzzle.targetX,y:laserPuzzle.targetY});
     const routeLength=route.slice(1).reduce((sum,p,i)=>sum+Math.hypot(p.x-route[i].x,p.y-route[i].y),0);
     let remaining=Math.min(laserPuzzle.beamProgress,routeLength);

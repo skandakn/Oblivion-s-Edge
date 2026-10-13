@@ -1199,12 +1199,14 @@
 
       const solution = [45, 135, 225, 315];
       const route = [{ x: 54, y: 70 }];
+      let alignedMirrors = 0;
       for (let i = 0; i < laserPuzzle.mirrors.length; i++) {
         const m = laserPuzzle.mirrors[i];
-        if (m.angle % 360 !== solution[i]) break;
         route.push({ x: m.x, y: m.y });
+        if (m.angle % 360 !== solution[i]) break;
+        alignedMirrors++;
       }
-      const isConnected = route.length === laserPuzzle.mirrors.length + 1;
+      const isConnected = alignedMirrors === laserPuzzle.mirrors.length;
       if (isConnected) route.push({ x: laserPuzzle.targetX, y: laserPuzzle.targetY });
       const routeLength = route.slice(1).reduce((sum, p, i) => sum + Math.hypot(p.x - route[i].x, p.y - route[i].y), 0);
       let remaining = Math.min(laserPuzzle.beamProgress, routeLength);
