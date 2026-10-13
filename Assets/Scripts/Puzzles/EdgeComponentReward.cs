@@ -19,7 +19,7 @@ namespace OblivionsEdge.Puzzles
 
         [Header("Artifact Metadata")]
         [Tooltip("Authoritative item ID consumed by Member 9's inventory system.")]
-        [SerializeField] private string _itemId = "item_edge_component";
+        [SerializeField] private string _itemId = "deathstorm_edge";
 
         [Tooltip("Display name presented on screen.")]
         [SerializeField] private string _displayName = "Edge Component Matrix";
