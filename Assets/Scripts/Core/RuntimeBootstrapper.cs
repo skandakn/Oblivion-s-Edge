@@ -69,14 +69,14 @@ namespace OblivionsEdge.Core
                 CreatePlatform(envRoot.transform, "Environment_Floor", new Vector2(0f, -3.8f), new Vector2(36f, 1.2f), new Color(0.12f, 0.16f, 0.22f));
             }
 
-            // Left Elevated Platform / Step (reduced height for comfortable player jump clearance)
-            CreatePlatform(envRoot.transform, "Platform_Left", new Vector2(-7.5f, -2.1f), new Vector2(6f, 0.5f), new Color(0.16f, 0.22f, 0.3f));
+            // Left step rises 0.75 units above the main deck for reliable short jumps.
+            CreatePlatform(envRoot.transform, "Platform_Left", new Vector2(-7.5f, -2.7f), new Vector2(6f, 0.5f), new Color(0.16f, 0.22f, 0.3f));
 
-            // Right Elevated Platform / Step (reduced height for comfortable player jump clearance)
-            CreatePlatform(envRoot.transform, "Platform_Right", new Vector2(7.5f, -2.1f), new Vector2(6f, 0.5f), new Color(0.16f, 0.22f, 0.3f));
+            // Right step matches the left step's 0.75-unit rise.
+            CreatePlatform(envRoot.transform, "Platform_Right", new Vector2(7.5f, -2.7f), new Vector2(6f, 0.5f), new Color(0.16f, 0.22f, 0.3f));
 
-            // High Center Observation Reactor Platform / Step (reduced height for comfortable player jump clearance)
-            CreatePlatform(envRoot.transform, "Platform_Reactor", new Vector2(0f, -0.6f), new Vector2(5f, 0.5f), new Color(0.2f, 0.28f, 0.38f));
+            // Reactor step rises 0.9 units above the side platforms.
+            CreatePlatform(envRoot.transform, "Platform_Reactor", new Vector2(0f, -1.8f), new Vector2(5f, 0.5f), new Color(0.2f, 0.28f, 0.38f));
 
             // Left Wall Barrier
             if (GameObject.Find("Wall_Left") == null)
