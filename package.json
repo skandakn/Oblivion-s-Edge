@@ -1,0 +1,21 @@
+{
+  "name": "oblivions-edge",
+  "version": "1.0.0",
+  "description": "OBLIVION'S EDGE — 2D Sci-Fi Survival Horror Web Game",
+  "main": "index.html",
+  "scripts": {
+    "start": "python -m http.server 8080"
+  },
+  "keywords": [
+    "game",
+    "html5",
+    "canvas",
+    "survival-horror",
+    "sci-fi",
+    "unity-alternative",
+    "webgl",
+    "vercel"
+  ],
+  "author": "Skanda & Team",
+  "license": "MIT"
+}
