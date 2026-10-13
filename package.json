@@ -1,17 +1,23 @@
 {
   "name": "oblivions-edge",
   "version": "1.0.0",
-  "description": "Oblivion's Edge 2D Sci-Fi Survival Horror Local Simulator",
+  "description": "OBLIVION'S EDGE — 2D Sci-Fi Survival Horror Web Game & Local Simulator",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "preview": "node server.js"
+    "preview": "node server.js",
+    "serve": "python -m http.server 8080"
   },
   "keywords": [
-    "unity",
     "game",
-    "simulator"
+    "html5",
+    "canvas",
+    "survival-horror",
+    "sci-fi",
+    "unity-alternative",
+    "webgl",
+    "vercel"
   ],
-  "author": "Oblivions Edge Team",
+  "author": "Skanda & Oblivions Edge Team",
   "license": "MIT"
 }

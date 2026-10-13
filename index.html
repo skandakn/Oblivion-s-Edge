@@ -1,0 +1,1466 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>OBLIVION'S EDGE — 2D Sci-Fi Survival Horror</title>
+  <meta name="description" content="A complete 2D Sci-Fi Survival Horror game. Explore a derelict starship, solve optics and geometry puzzles, confront the Bio-Synthetic Archon, and forge the legendary DeathStorm.">
+  <meta name="theme-color" content="#060911">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    * { box-sizing: border-box; touch-action: manipulation; }
+    body, html {
+      margin: 0; padding: 0;
+      width: 100%; height: 100%;
+      overflow: hidden;
+      background: #04070d;
+      font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+    canvas {
+      display: block;
+      width: 100vw;
+      height: 100vh;
+      background: #04070d;
+      cursor: crosshair;
+    }
+    .hud-bar { transition: width 0.15s ease-out, background-color 0.2s ease; }
+    .scanline {
+      pointer-events: none;
+      background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.28) 50%),
+                  radial-gradient(circle at center, transparent 65%, rgba(0, 0, 0, 0.65) 100%);
+      background-size: 100% 4px, 100% 100%;
+    }
+    .glow-cyan { text-shadow: 0 0 10px rgba(6, 182, 212, 0.8), 0 0 20px rgba(6, 182, 212, 0.4); }
+    .glow-purple { text-shadow: 0 0 12px rgba(168, 85, 247, 0.9), 0 0 24px rgba(168, 85, 247, 0.5); }
+    .glow-red { text-shadow: 0 0 12px rgba(239, 68, 68, 0.9), 0 0 24px rgba(239, 68, 68, 0.5); }
+    @keyframes pulse-slow {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.75; transform: scale(0.98); }
+    }
+    .pulse-alarm { animation: pulse-slow 1.2s infinite; }
+    /* Custom Scrollbar for Lore/Logs */
+    ::-webkit-scrollbar { width: 4px; }
+    ::-webkit-scrollbar-track { background: #0b111e; }
+    ::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 2px; }
+  </style>
+</head>
+<body class="w-full h-full relative overflow-hidden select-none bg-slate-950 text-slate-100">
+
+  <!-- MAIN 2D RENDERING VIEWPORT -->
+  <canvas id="gameCanvas"></canvas>
+
+  <!-- CRT VIGNETTE & SCANLINE OVERLAY -->
+  <div class="scanline absolute inset-0 z-10 pointer-events-none"></div>
+
+  <!-- ========================================== -->
+  <!-- TOP HEADER HUD: BOSS VITAL READOUT & TIMER -->
+  <!-- ========================================== -->
+  <div id="bossHud" class="absolute top-4 left-1/2 -translate-x-1/2 w-11/12 max-w-xl z-20 pointer-events-none transition-all duration-300 opacity-0 -translate-y-4">
+    <div class="bg-slate-900/90 border border-red-500/50 backdrop-blur-md rounded-xl p-3 shadow-2xl">
+      <div class="flex justify-between items-center text-xs font-semibold mb-1">
+        <span class="text-red-400 tracking-wider flex items-center gap-2">
+          <span class="w-2.5 h-2.5 rounded-full bg-red-500 animate-ping"></span>
+          <span id="bossName">BIO-SYNTHETIC ARCHON</span>
+          <span id="bossPhaseBadge" class="text-[10px] bg-red-950 text-red-300 px-2 py-0.5 rounded border border-red-800">PHASE 1</span>
+        </span>
+        <span id="bossHpText" class="text-slate-300 font-mono text-xs">100%</span>
+      </div>
+      <!-- Armor Bar -->
+      <div class="w-full h-1.5 bg-slate-950 rounded-full overflow-hidden border border-slate-800 mb-1">
+        <div id="bossArmorBar" class="hud-bar h-full bg-amber-400" style="width: 100%;"></div>
+      </div>
+      <!-- Core Health Bar -->
+      <div class="w-full h-3 bg-slate-950 rounded-full overflow-hidden border border-slate-800">
+        <div id="bossHpBar" class="hud-bar h-full bg-gradient-to-r from-red-600 via-rose-500 to-amber-500" style="width: 100%;"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CRAFTING 60-SECOND COUNTDOWN CLOCK -->
+  <div id="countdownBanner" class="absolute top-20 left-1/2 -translate-x-1/2 z-20 pointer-events-none hidden">
+    <div class="bg-purple-950/90 border-2 border-purple-500 text-purple-200 px-6 py-2 rounded-xl backdrop-blur-md shadow-2xl flex items-center gap-3 pulse-alarm">
+      <span class="text-xl">⚠️</span>
+      <div>
+        <div class="text-[10px] tracking-widest font-bold text-purple-300 uppercase">SYNTHESIS HARMONICS IN PROGRESS</div>
+        <div class="text-2xl font-black font-mono text-purple-100 flex items-center gap-1">
+          <span id="countdownTimer">60.0</span>s
+          <span class="text-xs text-purple-400 font-normal">UNTIL VOID OVERLOAD</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MISSION OBJECTIVE BANNER -->
+  <div class="absolute top-4 left-4 z-20 pointer-events-none">
+    <div class="bg-slate-900/85 border border-cyan-500/40 rounded-xl px-3.5 py-2.5 backdrop-blur-md shadow-xl max-w-sm">
+      <div class="flex items-center gap-2 mb-1">
+        <span class="w-2 h-2 rounded-full bg-cyan-400 animate-pulse"></span>
+        <span class="text-[10px] font-bold text-cyan-400 uppercase tracking-wider">PRIMARY DIRECTIVE</span>
+      </div>
+      <div id="objectiveText" class="text-xs font-medium text-slate-200 leading-snug">
+        Infiltrate Optics Lab. Connect Laser Reflection Circuit to recover the Edge Component.
+      </div>
+      <!-- Artifact Checkmarks -->
+      <div class="flex items-center gap-3 mt-2 pt-2 border-t border-slate-800/80 text-[10px] font-mono">
+        <span id="badgeEdge" class="text-slate-500 flex items-center gap-1">◇ EDGE</span>
+        <span id="badgeHandle" class="text-slate-500 flex items-center gap-1">◇ HANDLE</span>
+        <span id="badgeCore" class="text-slate-500 flex items-center gap-1">◇ CORE</span>
+        <span id="badgeAxe" class="text-slate-500 flex items-center gap-1">⚡ DEATHSTORM</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- TOP-RIGHT RADAR & AUDIO CONTROLS -->
+  <div class="absolute top-4 right-4 z-20 flex items-center gap-2">
+    <button id="audioToggleBtn" onclick="toggleAudio()" class="bg-slate-900/85 hover:bg-slate-800 border border-slate-700/80 text-cyan-400 px-3 py-2 rounded-xl text-xs font-mono shadow-xl backdrop-blur flex items-center gap-1.5 transition">
+      <span id="audioIcon">🔊</span> <span id="audioText">SFX ON</span>
+    </button>
+    <button onclick="toggleHelpModal()" class="bg-slate-900/85 hover:bg-slate-800 border border-slate-700/80 text-slate-300 px-3 py-2 rounded-xl text-xs font-mono shadow-xl backdrop-blur transition">
+      ? GUIDE
+    </button>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- BOTTOM-LEFT HUD: SURVIVOR VITALS           -->
+  <!-- ========================================== -->
+  <div class="absolute bottom-5 left-5 w-64 z-20 pointer-events-none">
+    <div class="bg-slate-900/85 border border-slate-700/60 rounded-2xl p-3.5 backdrop-blur-md shadow-2xl space-y-2">
+      <div class="flex items-center justify-between border-b border-slate-800 pb-1.5">
+        <span class="text-xs font-bold tracking-wider text-slate-300">EVA SURVIVOR // SUIT VITALS</span>
+        <span id="clockDisplay" class="text-[11px] font-mono text-cyan-400">00:00</span>
+      </div>
+      <!-- Health (Integrity) -->
+      <div>
+        <div class="flex justify-between text-[11px] text-slate-400 mb-0.5 font-medium">
+          <span>HULL INTEGRITY</span>
+          <span id="hpNum" class="font-mono text-emerald-400">100 / 100</span>
+        </div>
+        <div class="w-full h-2.5 bg-slate-950 rounded-full overflow-hidden border border-slate-800">
+          <div id="hpBar" class="hud-bar h-full bg-emerald-500" style="width: 100%;"></div>
+        </div>
+      </div>
+      <!-- Stamina (Evade Thruster) -->
+      <div>
+        <div class="flex justify-between text-[11px] text-slate-400 mb-0.5 font-medium">
+          <span>DASH BOOSTER</span>
+          <span id="staminaNum" class="font-mono text-amber-400">READY</span>
+        </div>
+        <div class="w-full h-2 bg-slate-950 rounded-full overflow-hidden border border-slate-800">
+          <div id="staminaBar" class="hud-bar h-full bg-amber-500" style="width: 100%;"></div>
+        </div>
+      </div>
+      <!-- Shield / Barrier -->
+      <div>
+        <div class="flex justify-between text-[11px] text-slate-400 mb-0.5 font-medium">
+          <span>PLASMA SHIELD</span>
+          <span id="shieldNum" class="font-mono text-cyan-400">100%</span>
+        </div>
+        <div class="w-full h-1.5 bg-slate-950 rounded-full overflow-hidden border border-slate-800">
+          <div id="shieldBar" class="hud-bar h-full bg-cyan-400" style="width: 100%;"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- BOTTOM-RIGHT HUD: ARSENAL & WEAPON STATUS  -->
+  <!-- ========================================== -->
+  <div class="absolute bottom-5 right-5 w-64 z-20 pointer-events-none text-right">
+    <div class="bg-slate-900/85 border border-slate-700/60 rounded-2xl p-3.5 backdrop-blur-md shadow-2xl">
+      <div id="weaponName" class="text-xs font-bold text-cyan-400 tracking-wider">PULSE PISTOL [MK-I]</div>
+      <div class="flex items-baseline justify-end gap-1.5 my-1">
+        <span id="ammoCur" class="text-4xl font-extrabold font-mono text-slate-100 leading-none">12</span>
+        <span class="text-slate-500 text-lg font-mono">/</span>
+        <span id="ammoRes" class="text-slate-400 font-mono text-lg">48</span>
+      </div>
+      <div id="reloadText" class="text-[11px] font-semibold text-emerald-400 tracking-wider h-4">MAGAZINE READY</div>
+      <div class="flex justify-end gap-1.5 mt-2 pt-2 border-t border-slate-800 text-[10px] font-mono">
+        <span id="wSlot1" class="px-2 py-0.5 rounded bg-cyan-950 text-cyan-300 border border-cyan-700">[1] PISTOL</span>
+        <span id="wSlot2" class="px-2 py-0.5 rounded bg-slate-950 text-slate-500 border border-slate-800">[2] SCATTER</span>
+        <span id="wSlot3" class="px-2 py-0.5 rounded bg-slate-950 text-slate-500 border border-slate-800">[3] RAILGUN</span>
+        <span id="wSlot4" class="px-2 py-0.5 rounded bg-slate-950 text-slate-500 border border-slate-800 hidden">[4] AXE</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- CONTEXTUAL INTERACTION POPUP (E KEY)       -->
+  <!-- ========================================== -->
+  <div id="interactToast" class="absolute top-2/3 left-1/2 -translate-x-1/2 -translate-y-1/2 z-30 pointer-events-none hidden">
+    <div class="bg-slate-900/95 border border-amber-500 text-amber-200 px-4 py-2 rounded-xl font-mono text-xs shadow-2xl backdrop-blur-md flex items-center gap-2.5 animate-bounce">
+      <span class="bg-amber-500 text-slate-950 font-black px-2 py-0.5 rounded text-[11px]">E</span>
+      <span id="interactToastMsg">Examine Optics Terminal</span>
+    </div>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- MODAL: PUZZLE 1 — EDGE LASER REFLECTION    -->
+  <!-- ========================================== -->
+  <div id="modalEdgePuzzle" class="absolute inset-0 bg-black/85 backdrop-blur-md flex items-center justify-center z-40 hidden">
+    <div class="bg-slate-900 border border-cyan-500/70 rounded-3xl p-6 w-[34rem] shadow-2xl text-slate-200 relative">
+      <div class="flex justify-between items-center border-b border-slate-800 pb-3 mb-4">
+        <div>
+          <h3 class="text-base font-bold text-cyan-400 flex items-center gap-2">
+            <span class="w-2.5 h-2.5 rounded-full bg-cyan-400 animate-pulse"></span>
+            OPTICS LAB // LASER ALIGNMENT CONDUIT
+          </h3>
+          <p class="text-xs text-slate-400 mt-0.5">Rotate the reflection mirrors to direct the laser into the optical receptor node.</p>
+        </div>
+        <button onclick="closeModals()" class="text-slate-400 hover:text-white text-xl font-mono px-2">&times;</button>
+      </div>
+
+      <!-- Laser Puzzle Interactive Grid Canvas -->
+      <div class="bg-slate-950 rounded-2xl p-4 border border-slate-800 relative flex justify-center">
+        <canvas id="laserCanvas" width="460" height="260" class="rounded-xl bg-[#03060c] cursor-pointer" onclick="handleLaserCanvasClick(event)"></canvas>
+      </div>
+
+      <div class="flex justify-between items-center mt-4 text-xs font-mono">
+        <span id="laserStatus" class="text-amber-400 flex items-center gap-1.5">
+          <span class="w-2 h-2 rounded-full bg-amber-400 animate-ping"></span> BEAM DISCONNECTED
+        </span>
+        <button onclick="resetLaserPuzzle()" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg border border-slate-700 transition">
+          RESET MIRRORS
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- MODAL: PUZZLE 2 — HANDLE ROTARY CIPHER     -->
+  <!-- ========================================== -->
+  <div id="modalHandlePuzzle" class="absolute inset-0 bg-black/85 backdrop-blur-md flex items-center justify-center z-40 hidden">
+    <div class="bg-slate-900 border border-amber-500/70 rounded-3xl p-6 w-[32rem] shadow-2xl text-slate-200">
+      <div class="flex justify-between items-center border-b border-slate-800 pb-3 mb-4">
+        <div>
+          <h3 class="text-base font-bold text-amber-400 flex items-center gap-2">
+            <span class="w-2.5 h-2.5 rounded-full bg-amber-400 animate-pulse"></span>
+            ENGINEERING SUB-DECK // GEOMETRIC LOCK
+          </h3>
+          <p class="text-xs text-slate-400 mt-0.5">Rotate the concentric cryptographic rings to align the matching symbols.</p>
+        </div>
+        <button onclick="closeModals()" class="text-slate-400 hover:text-white text-xl font-mono px-2">&times;</button>
+      </div>
+
+      <!-- 3 Concentric Interactive Rings -->
+      <div class="flex flex-col items-center justify-center py-4 space-y-4">
+        <div class="flex gap-4">
+          <button onclick="rotateRing(0)" class="bg-slate-950 hover:bg-slate-800 border border-slate-700 text-amber-300 px-4 py-3 rounded-2xl flex flex-col items-center gap-1 transition">
+            <span class="text-[10px] text-slate-400 uppercase font-mono">OUTER RING</span>
+            <span id="ringVal0" class="text-2xl font-bold font-mono">Δ 90°</span>
+          </button>
+          <button onclick="rotateRing(1)" class="bg-slate-950 hover:bg-slate-800 border border-slate-700 text-amber-300 px-4 py-3 rounded-2xl flex flex-col items-center gap-1 transition">
+            <span class="text-[10px] text-slate-400 uppercase font-mono">MIDDLE RING</span>
+            <span id="ringVal1" class="text-2xl font-bold font-mono">Ω 180°</span>
+          </button>
+          <button onclick="rotateRing(2)" class="bg-slate-950 hover:bg-slate-800 border border-slate-700 text-amber-300 px-4 py-3 rounded-2xl flex flex-col items-center gap-1 transition">
+            <span class="text-[10px] text-slate-400 uppercase font-mono">INNER RING</span>
+            <span id="ringVal2" class="text-2xl font-bold font-mono">Ψ 270°</span>
+          </button>
+        </div>
+        <div class="text-[11px] text-slate-400 font-mono bg-slate-950/80 px-4 py-2 rounded-xl border border-slate-800">
+          CREW LOG CLUE: <span class="text-cyan-400 font-semibold">"Align Δ at 0°, Ω at 90°, Ψ at 180° to release the hydraulic clasp."</span>
+        </div>
+      </div>
+
+      <div class="flex justify-between items-center border-t border-slate-800 pt-3 text-xs font-mono">
+        <span id="handleStatus" class="text-amber-400">TUMBLERS UNALIGNED</span>
+        <button onclick="checkHandleSolution()" class="px-4 py-2 bg-amber-600 hover:bg-amber-500 text-slate-950 font-bold rounded-xl transition">
+          ENGAGE LOCK
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- MODAL: PUZZLE 3 — CORE GRAVITY EXTRACTION  -->
+  <!-- ========================================== -->
+  <div id="modalCorePuzzle" class="absolute inset-0 bg-black/85 backdrop-blur-md flex items-center justify-center z-40 hidden">
+    <div class="bg-slate-900 border border-rose-500/70 rounded-3xl p-6 w-[30rem] shadow-2xl text-slate-200">
+      <div class="flex justify-between items-center border-b border-slate-800 pb-3 mb-4">
+        <div>
+          <h3 class="text-base font-bold text-rose-400 flex items-center gap-2">
+            <span class="w-2.5 h-2.5 rounded-full bg-rose-400 animate-pulse"></span>
+            BIO-STASIS CHAMBER // CORE EXTRACTION
+          </h3>
+          <p class="text-xs text-slate-400 mt-0.5">The Archon's armor is breached! Align the 4 containment polarity vectors to extract the Core.</p>
+        </div>
+        <button onclick="closeModals()" class="text-slate-400 hover:text-white text-xl font-mono px-2">&times;</button>
+      </div>
+
+      <div class="flex flex-col items-center justify-center py-3">
+        <div class="text-xs text-slate-400 mb-3 font-mono">TARGET VECTOR: <span class="text-emerald-400 font-bold">[ NORTH-EAST POLARITY ]</span></div>
+        <div class="grid grid-cols-2 gap-3 w-56">
+          <button onclick="selectPolarity('NORTH')" class="p-3 bg-slate-950 border border-slate-800 hover:border-rose-400 rounded-xl font-mono text-xs font-bold text-slate-300">▲ NORTH</button>
+          <button onclick="selectPolarity('SOUTH')" class="p-3 bg-slate-950 border border-slate-800 hover:border-rose-400 rounded-xl font-mono text-xs font-bold text-slate-300">▼ SOUTH</button>
+          <button onclick="selectPolarity('EAST')" class="p-3 bg-slate-950 border border-slate-800 hover:border-rose-400 rounded-xl font-mono text-xs font-bold text-slate-300">► EAST</button>
+          <button onclick="selectPolarity('WEST')" class="p-3 bg-slate-950 border border-slate-800 hover:border-rose-400 rounded-xl font-mono text-xs font-bold text-slate-300">◄ WEST</button>
+        </div>
+        <div id="polarityChoice" class="text-xs font-mono text-amber-400 mt-3">Select primary & secondary vector...</div>
+      </div>
+
+      <div class="flex justify-end border-t border-slate-800 pt-3">
+        <button onclick="extractCore()" class="px-4 py-2 bg-rose-600 hover:bg-rose-500 text-white font-bold rounded-xl text-xs font-mono transition">
+          CONFIRM EXTRACTION
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- MODAL: HELP & CONTROLS GUIDE               -->
+  <!-- ========================================== -->
+  <div id="modalHelp" class="absolute inset-0 bg-black/85 backdrop-blur-md flex items-center justify-center z-50 hidden">
+    <div class="bg-slate-900 border border-slate-700 rounded-3xl p-6 w-[32rem] shadow-2xl text-slate-200">
+      <div class="flex justify-between items-center border-b border-slate-800 pb-3 mb-4">
+        <h3 class="text-base font-bold text-cyan-400">TACTICAL CONTROLS & OBJECTIVES</h3>
+        <button onclick="closeModals()" class="text-slate-400 hover:text-white text-xl font-mono">&times;</button>
+      </div>
+      <div class="space-y-3 text-xs text-slate-300">
+        <div class="grid grid-cols-2 gap-2 bg-slate-950 p-3 rounded-xl border border-slate-800 font-mono">
+          <div><span class="text-cyan-400 font-bold">A / D</span>: Move Left / Right</div>
+          <div><span class="text-cyan-400 font-bold">SPACE / W</span>: Jump / Jetpack</div>
+          <div><span class="text-cyan-400 font-bold">SHIFT / ALT</span>: Phantom Dash</div>
+          <div><span class="text-cyan-400 font-bold">MOUSE</span>: 360° Aiming</div>
+          <div><span class="text-cyan-400 font-bold">LMB</span>: Fire Weapon</div>
+          <div><span class="text-cyan-400 font-bold">R</span>: Reload Magazine</div>
+          <div><span class="text-cyan-400 font-bold">1 / 2 / 3</span>: Swap Arsenal</div>
+          <div><span class="text-cyan-400 font-bold">E</span>: Interact / Terminals</div>
+        </div>
+        <div class="bg-cyan-950/40 border border-cyan-800/50 p-3 rounded-xl">
+          <div class="font-bold text-cyan-300 mb-1">CAMPAIGN WIN CONDITION:</div>
+          <p class="text-[11px] leading-relaxed text-cyan-100">
+            1. Find the <b>Edge</b> in the Optics Lab (Laser Puzzle).<br>
+            2. Find the <b>Handle</b> in Engineering (Rotary Cipher).<br>
+            3. Shatter the Archon's armor & extract the <b>Core</b>.<br>
+            4. Forge <b>DeathStorm</b> at the central altar before the 60s timer expires.<br>
+            5. Strike the Archon with the DeathStorm Axe for the final victory!
+          </p>
+        </div>
+      </div>
+      <div class="flex justify-end mt-4">
+        <button onclick="closeModals()" class="px-5 py-2 bg-cyan-600 hover:bg-cyan-500 text-slate-950 font-bold rounded-xl text-xs transition">RESUME MISSION</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- MODAL: GAME OVER / RESPAWN                 -->
+  <!-- ========================================== -->
+  <div id="modalGameOver" class="absolute inset-0 bg-red-950/90 backdrop-blur-lg flex items-center justify-center z-50 hidden">
+    <div class="text-center space-y-4 max-w-md p-6">
+      <div class="text-5xl font-black font-mono text-red-500 glow-red">VITAL SIGNS LOST</div>
+      <p class="text-xs text-red-200">The Archon biological entity has compromised your life-support suit.</p>
+      <button onclick="restartGame()" class="px-6 py-3 bg-red-600 hover:bg-red-500 text-white font-bold rounded-2xl text-xs tracking-wider uppercase font-mono shadow-xl transition">
+        REBOOT SYSTEM & RETRY
+      </button>
+    </div>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- MODAL: VICTORY / MISSION ACCOMPLISHED      -->
+  <!-- ========================================== -->
+  <div id="modalVictory" class="absolute inset-0 bg-slate-950/95 backdrop-blur-xl flex items-center justify-center z-50 hidden">
+    <div class="text-center space-y-5 max-w-lg p-8 bg-slate-900 border-2 border-purple-500 rounded-3xl shadow-2xl">
+      <div class="text-4xl font-black font-mono text-purple-400 glow-purple">OBLIVION'S EDGE FORGED</div>
+      <div class="w-16 h-1 bg-purple-500 mx-auto rounded-full"></div>
+      <p class="text-xs text-slate-300 leading-relaxed">
+        With the legendary DeathStorm Void Axe, you shattered the Bio-Synthetic Archon's core node. The derelict vessel's containment seals have stabilized. You survived the edge of oblivion.
+      </p>
+      <div class="bg-slate-950 p-4 rounded-2xl border border-slate-800 text-xs font-mono text-slate-300 grid grid-cols-2 gap-2 text-left">
+        <div>TIME ELAPSED: <span id="vicTime" class="text-cyan-400 font-bold">03:42</span></div>
+        <div>ACCURACY: <span id="vicAcc" class="text-emerald-400 font-bold">84%</span></div>
+        <div>DAMAGE DEALT: <span id="vicDmg" class="text-rose-400 font-bold">1,850</span></div>
+        <div>RANK: <span class="text-amber-400 font-bold">S-RANK SURVIVOR</span></div>
+      </div>
+      <button onclick="restartGame()" class="px-6 py-3 bg-purple-600 hover:bg-purple-500 text-white font-bold rounded-2xl text-xs tracking-wider uppercase font-mono shadow-xl transition">
+        PLAY AGAIN
+      </button>
+    </div>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- JAVASCRIPT: COMPLETE GAME ENGINE ENGINE    -->
+  <!-- ========================================== -->
+  <script>
+    // --- Canvas & Hi-DPI Setup ---
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    let width, height;
+
+    function resize() {
+      width = canvas.width = window.innerWidth;
+      height = canvas.height = window.innerHeight;
+    }
+    window.addEventListener('resize', resize);
+    resize();
+
+    // --- Audio Synthesizer (Web Audio API) ---
+    let audioEnabled = true;
+    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+    let audioCtx = null;
+
+    function initAudio() {
+      if (!audioCtx) {
+        audioCtx = new AudioContextClass();
+      }
+      if (audioCtx.state === 'suspended') {
+        audioCtx.resume();
+      }
+    }
+
+    function toggleAudio() {
+      audioEnabled = !audioEnabled;
+      document.getElementById('audioIcon').textContent = audioEnabled ? '🔊' : '🔇';
+      document.getElementById('audioText').textContent = audioEnabled ? 'SFX ON' : 'SFX MUTED';
+      if (audioEnabled) playTone(587, 'sine', 0.1, 0.08);
+    }
+
+    function playTone(freq, type = 'sine', duration = 0.1, gainVal = 0.08) {
+      if (!audioEnabled) return;
+      initAudio();
+      try {
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = type;
+        osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+        gain.gain.setValueAtTime(gainVal, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + duration);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start();
+        osc.stop(audioCtx.currentTime + duration);
+      } catch (e) {}
+    }
+
+    function sfxShoot(weapIdx) {
+      if (!audioEnabled) return;
+      if (weapIdx === 0) { // Pulse Pistol
+        playTone(720, 'square', 0.06, 0.06);
+      } else if (weapIdx === 1) { // Scattergun
+        playTone(340, 'sawtooth', 0.12, 0.12);
+      } else if (weapIdx === 2) { // Railgun
+        playTone(1100, 'triangle', 0.25, 0.15);
+      } else if (weapIdx === 3) { // Axe
+        playTone(220, 'sine', 0.3, 0.2);
+      }
+    }
+
+    function sfxHit() { playTone(140, 'sawtooth', 0.08, 0.08); }
+    function sfxDash() { playTone(440, 'sine', 0.15, 0.1); }
+    function sfxPuzzle() { playTone(880, 'sine', 0.12, 0.1); }
+    function sfxAlarm() { playTone(400, 'square', 0.3, 0.1); }
+
+    // --- Input Management ---
+    const keys = {};
+    const mouse = { x: width / 2, y: height / 2, down: false };
+
+    window.addEventListener('keydown', e => {
+      initAudio();
+      const k = e.key.toLowerCase();
+      keys[k] = true;
+      if (e.key === ' ' || e.key === 'ArrowUp') e.preventDefault();
+      if (k === 'e') triggerInteraction();
+      if (k === 'r') reloadWeapon();
+      if (k === '1') selectWeapon(0);
+      if (k === '2') selectWeapon(1);
+      if (k === '3') selectWeapon(2);
+      if (k === '4' && state.inventory.deathstorm) selectWeapon(3);
+      if (e.key === 'Escape') closeModals();
+    });
+
+    window.addEventListener('keyup', e => { keys[e.key.toLowerCase()] = false; });
+    window.addEventListener('mousemove', e => { mouse.x = e.clientX; mouse.y = e.clientY; });
+    window.addEventListener('mousedown', e => {
+      initAudio();
+      if (e.button === 0) mouse.down = true;
+    });
+    window.addEventListener('mouseup', e => { if (e.button === 0) mouse.down = false; });
+
+    // --- GAME STATE ---
+    const state = {
+      secondsElapsed: 0,
+      totalDamageDealt: 0,
+      shotsFired: 0,
+      shotsHit: 0,
+      camera: { x: 0, y: 0 },
+      player: {
+        x: 150,
+        y: 400,
+        vx: 0,
+        vy: 0,
+        width: 24,
+        height: 48,
+        speed: 5.2,
+        jumpForce: 13.5,
+        isGrounded: false,
+        dashTimer: 0,
+        dashCooldown: 0,
+        dashMaxCooldown: 1.2,
+        isDashing: false,
+        hp: 100,
+        maxHp: 100,
+        shield: 100,
+        maxShield: 100,
+        facingRight: true,
+        afterimages: []
+      },
+      weapons: [
+        { name: "PULSE PISTOL [MK-I]", clip: 12, maxClip: 12, reserve: 60, fireRate: 160, lastFired: 0, damage: 18, speed: 18, color: '#38bdf8' },
+        { name: "PLASMA SCATTERGUN", clip: 6, maxClip: 6, reserve: 36, fireRate: 600, lastFired: 0, damage: 12, speed: 14, count: 5, spread: 0.28, color: '#f59e0b' },
+        { name: "VOID RAILGUN", clip: 4, maxClip: 4, reserve: 16, fireRate: 900, lastFired: 0, damage: 95, speed: 28, piercing: true, color: '#a855f7' },
+        { name: "DEATHSTORM VOID AXE", clip: 1, maxClip: 1, reserve: 999, fireRate: 400, lastFired: 0, damage: 450, melee: true, color: '#ec4899' }
+      ],
+      curWeapIdx: 0,
+      isReloading: false,
+      inventory: {
+        edge: false,
+        handle: false,
+        core: false,
+        deathstorm: false
+      },
+      platforms: [
+        // Sector 1: Airlock & Corridor
+        { x: 0, y: 520, w: 900, h: 60, label: "Airlock Floor" },
+        { x: 0, y: 0, w: 900, h: 40, label: "Ceiling" },
+        { x: -40, y: 0, w: 40, h: 600, label: "Left Hull" },
+        { x: 260, y: 380, w: 180, h: 20 },
+        { x: 540, y: 280, w: 200, h: 20 },
+
+        // Sector 2: Optics Lab
+        { x: 900, y: 520, w: 1000, h: 60, label: "Lab Floor" },
+        { x: 900, y: 0, w: 1000, h: 40 },
+        { x: 1100, y: 380, w: 240, h: 20 },
+        { x: 1460, y: 260, w: 260, h: 20 },
+
+        // Sector 3: Engineering Sub-Deck
+        { x: 1900, y: 520, w: 1000, h: 60, label: "Deck Floor" },
+        { x: 1900, y: 0, w: 1000, h: 40 },
+        { x: 2120, y: 360, w: 220, h: 20 },
+        { x: 2480, y: 240, w: 240, h: 20 },
+
+        // Sector 4: Reactor Core Arena (Boss Lair)
+        { x: 2900, y: 560, w: 1500, h: 80, label: "Reactor Arena Deck" },
+        { x: 2900, y: 0, w: 1500, h: 40 },
+        { x: 4400, y: 0, w: 40, h: 700, label: "Right Hull Wall" },
+        { x: 3100, y: 400, w: 200, h: 20 },
+        { x: 3950, y: 400, w: 200, h: 20 },
+        { x: 3450, y: 280, w: 300, h: 24, label: "Forge Altar Platform" }
+      ],
+      interactables: [
+        { id: "note_corridor", x: 480, y: 480, r: 35, title: "Crew Message Log", active: true },
+        { id: "puzzle_edge", x: 1580, y: 220, r: 40, title: "Optics Laser Circuit", active: true },
+        { id: "puzzle_handle", x: 2600, y: 200, r: 40, title: "Engineering Dial Lock", active: true },
+        { id: "altar_forge", x: 3600, y: 240, r: 45, title: "DeathStorm Synthesis Altar", active: true }
+      ],
+      bullets: [],
+      particles: [],
+      drones: [
+        { x: 700, y: 460, vx: 1.5, hp: 50, maxHp: 50, r: 16, type: 'crawler' },
+        { x: 1350, y: 460, vx: -1.5, hp: 65, maxHp: 65, r: 16, type: 'spitter', shootTimer: 0 },
+        { x: 2300, y: 460, vx: 2, hp: 80, maxHp: 80, r: 18, type: 'crawler' }
+      ],
+      boss: {
+        x: 3750,
+        y: 440,
+        vx: 0,
+        vy: 0,
+        w: 90,
+        h: 90,
+        armor: 500,
+        maxArmor: 500,
+        hp: 800,
+        maxHp: 800,
+        phase: 1, // 1: Stalk, 2: Charge, 3: Core Exposed, 4: Enraged Void
+        staggerTimer: 0,
+        attackTimer: 0,
+        active: false,
+        defeated: false
+      },
+      craftingCountdown: 0, // 60-second timer
+      craftingActive: false
+    };
+
+    // --- GAME CLOCK ---
+    setInterval(() => {
+      state.secondsElapsed++;
+      const m = String(Math.floor(state.secondsElapsed / 60)).padStart(2, '0');
+      const s = String(state.secondsElapsed % 60).padStart(2, '0');
+      document.getElementById('clockDisplay').textContent = `${m}:${s}`;
+
+      // Handle 60s Crafting countdown
+      if (state.craftingActive && state.craftingCountdown > 0) {
+        state.craftingCountdown--;
+        document.getElementById('countdownTimer').textContent = state.craftingCountdown.toFixed(1);
+        if (state.craftingCountdown <= 0) {
+          // Timeout: Archon enrages completely!
+          state.boss.phase = 4;
+          showNotification("⚠️ SYNTHESIS WINDOW TIMEOUT! ARCHON HAS ENTERED VOID ENRAGE!");
+          sfxAlarm();
+        }
+      }
+    }, 1000);
+
+    // --- LASER PUZZLE STATE ---
+    const laserPuzzle = {
+      solved: false,
+      mirrors: [
+        { x: 120, y: 70, angle: 45 },
+        { x: 340, y: 70, angle: 135 },
+        { x: 340, y: 190, angle: 225 },
+        { x: 220, y: 190, angle: 315 }
+      ],
+      targetX: 220, targetY: 100
+    };
+
+    function renderLaserPuzzle() {
+      const cv = document.getElementById('laserCanvas');
+      if (!cv) return;
+      const c = cv.getContext('2d');
+      c.clearRect(0, 0, cv.width, cv.height);
+
+      // Emitter
+      c.fillStyle = '#06b6d4';
+      c.fillRect(30, 60, 24, 20);
+      c.fillStyle = '#fff';
+      c.font = '9px monospace';
+      c.fillText('EMIT', 32, 74);
+
+      // Receptor
+      c.fillStyle = laserPuzzle.solved ? '#10b981' : '#f43f5e';
+      c.beginPath();
+      c.arc(laserPuzzle.targetX, laserPuzzle.targetY, 12, 0, Math.PI * 2);
+      c.fill();
+      c.fillStyle = '#fff';
+      c.fillText('TARGET', laserPuzzle.targetX - 18, laserPuzzle.targetY + 22);
+
+      // Mirrors
+      laserPuzzle.mirrors.forEach((m, idx) => {
+        c.save();
+        c.translate(m.x, m.y);
+        c.rotate((m.angle * Math.PI) / 180);
+        c.strokeStyle = '#38bdf8';
+        c.lineWidth = 4;
+        c.beginPath();
+        c.moveTo(-16, 0);
+        c.lineTo(16, 0);
+        c.stroke();
+        c.restore();
+
+        // Pin center
+        c.fillStyle = '#94a3b8';
+        c.beginPath();
+        c.arc(m.x, m.y, 4, 0, Math.PI * 2);
+        c.fill();
+      });
+
+      // Ray trace beam
+      c.strokeStyle = '#22d3ee';
+      c.lineWidth = 2;
+      c.shadowColor = '#22d3ee';
+      c.shadowBlur = 8;
+      c.beginPath();
+      c.moveTo(54, 70);
+
+      // Check hits
+      let curX = 54, curY = 70;
+      let dirX = 1, dirY = 0;
+      let path = [{ x: curX, y: curY }];
+
+      for (let step = 0; step < 8; step++) {
+        let nextX = curX + dirX * 300;
+        let nextY = curY + dirY * 300;
+
+        // Check mirror collision
+        let hitMirror = null;
+        for (let m of laserPuzzle.mirrors) {
+          let dist = Math.hypot(m.x - curX, m.y - curY);
+          if (dist > 15 && Math.hypot(m.x - nextX, m.y - nextY) < 300) {
+            // Check intersection along ray
+            let dx = m.x - curX, dy = m.y - curY;
+            let dot = dx * dirX + dy * dirY;
+            if (dot > 0 && Math.abs(dx * dirY - dy * dirX) < 16) {
+              hitMirror = m;
+              break;
+            }
+          }
+        }
+
+        if (hitMirror) {
+          curX = hitMirror.x;
+          curY = hitMirror.y;
+          path.push({ x: curX, y: curY });
+          // Reflect 90 degrees based on angle
+          let temp = dirX;
+          if (hitMirror.angle % 180 === 45) { dirX = dirY; dirY = temp; }
+          else { dirX = -dirY; dirY = -temp; }
+        } else {
+          path.push({ x: nextX, y: nextY });
+          break;
+        }
+
+        // Check if hits target
+        if (Math.hypot(curX - laserPuzzle.targetX, curY - laserPuzzle.targetY) < 22) {
+          laserPuzzle.solved = true;
+          break;
+        }
+      }
+
+      for (let p of path) c.lineTo(p.x, p.y);
+      c.stroke();
+      c.shadowBlur = 0;
+
+      if (laserPuzzle.solved) {
+        document.getElementById('laserStatus').innerHTML = '<span class="text-emerald-400 font-bold">✓ CIRCUIT CONNECTED! VAULT OPENED</span>';
+        state.inventory.edge = true;
+        document.getElementById('badgeEdge').className = 'text-cyan-400 font-bold flex items-center gap-1';
+        updateDirective();
+      }
+    }
+
+    function handleLaserCanvasClick(e) {
+      const rect = e.target.getBoundingClientRect();
+      const clickX = e.clientX - rect.left;
+      const clickY = e.clientY - rect.top;
+
+      laserPuzzle.mirrors.forEach(m => {
+        if (Math.hypot(m.x - clickX, m.y - clickY) < 26) {
+          m.angle = (m.angle + 90) % 360;
+          sfxPuzzle();
+          renderLaserPuzzle();
+        }
+      });
+    }
+
+    function resetLaserPuzzle() {
+      laserPuzzle.mirrors[0].angle = 90;
+      laserPuzzle.mirrors[1].angle = 180;
+      laserPuzzle.mirrors[2].angle = 0;
+      laserPuzzle.mirrors[3].angle = 270;
+      laserPuzzle.solved = false;
+      renderLaserPuzzle();
+    }
+
+    // --- ROTARY HANDLE PUZZLE STATE ---
+    const handlePuzzle = {
+      rings: [90, 180, 270],
+      target: [0, 90, 180]
+    };
+
+    function rotateRing(idx) {
+      handlePuzzle.rings[idx] = (handlePuzzle.rings[idx] + 90) % 360;
+      const symbols = ['Δ', 'Ω', 'Ψ'];
+      document.getElementById(`ringVal${idx}`).textContent = `${symbols[idx]} ${handlePuzzle.rings[idx]}°`;
+      sfxPuzzle();
+    }
+
+    function checkHandleSolution() {
+      const match = handlePuzzle.rings.every((val, i) => val === handlePuzzle.target[i]);
+      if (match) {
+        sfxPuzzle();
+        state.inventory.handle = true;
+        document.getElementById('badgeHandle').className = 'text-amber-400 font-bold flex items-center gap-1';
+        document.getElementById('handleStatus').innerHTML = '<span class="text-emerald-400 font-bold">✓ CLASP DISENGAGED — HANDLE RETRIEVED</span>';
+        updateDirective();
+        setTimeout(closeModals, 1200);
+      } else {
+        document.getElementById('handleStatus').innerHTML = '<span class="text-red-400">INCORRECT CONFIGURATION — REFER TO CREW LOG</span>';
+        sfxHit();
+      }
+    }
+
+    // --- CORE EXTRACTION PUZZLE ---
+    let selectedPolarities = [];
+    function selectPolarity(pol) {
+      if (!selectedPolarities.includes(pol)) {
+        selectedPolarities.push(pol);
+        if (selectedPolarities.length > 2) selectedPolarities.shift();
+      }
+      document.getElementById('polarityChoice').textContent = `SELECTED: ${selectedPolarities.join(' + ')}`;
+      sfxPuzzle();
+    }
+
+    function extractCore() {
+      if (selectedPolarities.includes('NORTH') && selectedPolarities.includes('EAST')) {
+        sfxPuzzle();
+        state.inventory.core = true;
+        document.getElementById('badgeCore').className = 'text-rose-400 font-bold flex items-center gap-1';
+        showNotification("✓ ALIEN CORE HARVESTED! PROCEED TO FORGE ALTAR!");
+        closeModals();
+        updateDirective();
+      } else {
+        document.getElementById('polarityChoice').textContent = '⚠️ MATRIX UNSTABLE! HARMONIC FAILED';
+        sfxHit();
+      }
+    }
+
+    // --- NOTIFICATION & DIRECTIVES ---
+    function showNotification(msg) {
+      const toast = document.getElementById('interactToast');
+      document.getElementById('interactToastMsg').textContent = msg;
+      toast.classList.remove('hidden');
+      setTimeout(() => toast.classList.add('hidden'), 3500);
+    }
+
+    function updateDirective() {
+      const obj = document.getElementById('objectiveText');
+      if (!state.inventory.edge) {
+        obj.textContent = "1. Infiltrate Optics Lab. Connect Laser Reflection Circuit to recover the Edge Component.";
+      } else if (!state.inventory.handle) {
+        obj.textContent = "2. Proceed to Engineering Deck. Align the Geometric Dial Lock to claim the Handle Component.";
+      } else if (!state.inventory.core) {
+        obj.textContent = "3. Enter Reactor Arena. Shatter the Archon's armor plates and extract the Bio-Core.";
+      } else if (!state.inventory.deathstorm) {
+        obj.textContent = "4. Reach the Forge Altar! Activate synthesis before the 60s overload timer expires!";
+      } else {
+        obj.textContent = "5. FINAL OBJECTIVE: Strike the Archon's exposed core with DeathStorm Void Axe!";
+      }
+    }
+
+    // --- INTERACTION LOGIC ---
+    function triggerInteraction() {
+      const p = state.player;
+      for (let item of state.interactables) {
+        const d = Math.hypot((p.x + p.width/2) - item.x, (p.y + p.height/2) - item.y);
+        if (d < item.r + 30) {
+          if (item.id === 'note_corridor') {
+            showNotification("LOG RECOVERED: 'Optics mirrors need 45° refraction. Engineering dial cipher: Δ 0°, Ω 90°, Ψ 180°'");
+            sfxPuzzle();
+          } else if (item.id === 'puzzle_edge') {
+            document.getElementById('modalEdgePuzzle').classList.remove('hidden');
+            renderLaserPuzzle();
+          } else if (item.id === 'puzzle_handle') {
+            document.getElementById('modalHandlePuzzle').classList.remove('hidden');
+          } else if (item.id === 'altar_forge') {
+            if (state.inventory.edge && state.inventory.handle && state.inventory.core && !state.inventory.deathstorm) {
+              startForgeSequence();
+            } else if (state.inventory.deathstorm) {
+              showNotification("DEATHSTORM ALREADY FORGED! ATTACK THE ARCHON!");
+            } else {
+              showNotification("FORGE LOCKED: Requires Edge, Handle, and Core matrices!");
+              sfxHit();
+            }
+          }
+          return;
+        }
+      }
+
+      // Check if boss staggered for Core extraction
+      if (state.boss.active && state.boss.phase === 3 && !state.inventory.core) {
+        const d = Math.hypot((p.x + p.width/2) - state.boss.x, (p.y + p.height/2) - state.boss.y);
+        if (d < 120) {
+          document.getElementById('modalCorePuzzle').classList.remove('hidden');
+        }
+      }
+    }
+
+    function startForgeSequence() {
+      state.craftingActive = true;
+      state.craftingCountdown = 60.0;
+      document.getElementById('countdownBanner').classList.remove('hidden');
+      state.boss.phase = 4; // Boss enrages immediately!
+      sfxAlarm();
+      showNotification("🔥 SYNTHESIS INITIATED! 60 SECONDS UNTIL VOID OVERLOAD!");
+
+      setTimeout(() => {
+        state.inventory.deathstorm = true;
+        document.getElementById('badgeAxe').className = 'text-pink-400 font-bold flex items-center gap-1';
+        document.getElementById('wSlot4').classList.remove('hidden');
+        selectWeapon(3); // Equip DeathStorm Axe
+        showNotification("⚡ DEATHSTORM FORGED! STRIKE THE WEAK POINT!");
+        sfxPuzzle();
+        updateDirective();
+      }, 5000);
+    }
+
+    function closeModals() {
+      document.querySelectorAll('#modalEdgePuzzle, #modalHandlePuzzle, #modalCorePuzzle, #modalHelp').forEach(m => m.classList.add('hidden'));
+    }
+
+    function toggleHelpModal() {
+      document.getElementById('modalHelp').classList.toggle('hidden');
+    }
+
+    // --- COMBAT & WEAPON MANAGEMENT ---
+    function selectWeapon(idx) {
+      if (idx === 3 && !state.inventory.deathstorm) return;
+      state.curWeapIdx = idx;
+      const w = state.weapons[idx];
+      document.getElementById('weaponName').textContent = w.name;
+      document.getElementById('ammoCur').textContent = w.clip;
+      document.getElementById('ammoRes').textContent = w.reserve;
+      [1, 2, 3, 4].forEach(i => {
+        const el = document.getElementById(`wSlot${i}`);
+        if (el) el.className = (i - 1 === idx) ? 'px-2 py-0.5 rounded bg-cyan-950 text-cyan-300 border border-cyan-700' : 'px-2 py-0.5 rounded bg-slate-950 text-slate-500 border border-slate-800';
+      });
+      sfxPuzzle();
+    }
+
+    function reloadWeapon() {
+      const w = state.weapons[state.curWeapIdx];
+      if (w.melee || state.isReloading || w.clip >= w.maxClip || w.reserve <= 0) return;
+      state.isReloading = true;
+      document.getElementById('reloadText').textContent = "RELOADING...";
+      document.getElementById('reloadText').className = "text-[11px] font-semibold text-amber-400 tracking-wider h-4";
+      sfxHit();
+
+      setTimeout(() => {
+        const needed = w.maxClip - w.clip;
+        const added = Math.min(needed, w.reserve);
+        w.clip += added;
+        w.reserve -= added;
+        state.isReloading = false;
+        document.getElementById('ammoCur').textContent = w.clip;
+        document.getElementById('ammoRes').textContent = w.reserve;
+        document.getElementById('reloadText').textContent = "MAGAZINE READY";
+        document.getElementById('reloadText').className = "text-[11px] font-semibold text-emerald-400 tracking-wider h-4";
+      }, 1100);
+    }
+
+    function shoot() {
+      const now = performance.now();
+      const w = state.weapons[state.curWeapIdx];
+      if (now - w.lastFired < w.fireRate) return;
+      if (state.isReloading) return;
+
+      if (!w.melee && w.clip <= 0) {
+        reloadWeapon();
+        return;
+      }
+
+      w.lastFired = now;
+      state.shotsFired++;
+
+      const p = state.player;
+      const originX = p.x + p.width/2;
+      const originY = p.y + p.height/2;
+      const targetWorldX = mouse.x + state.camera.x;
+      const targetWorldY = mouse.y + state.camera.y;
+
+      const angle = Math.atan2(targetWorldY - originY, targetWorldX - originX);
+
+      if (w.melee) {
+        // Melee Axe Strike
+        sfxShoot(3);
+        spawnSlashParticle(originX, originY, angle);
+
+        // Check Boss hit
+        const b = state.boss;
+        if (b.active && Math.hypot(b.x - originX, b.y - originY) < 160) {
+          state.shotsHit++;
+          state.totalDamageDealt += w.damage;
+          spawnDamageNum(b.x, b.y - 40, w.damage, '#ec4899');
+          b.hp -= w.damage;
+          sfxHit();
+
+          if (b.hp <= 0) {
+            defeatBoss();
+          }
+        }
+        return;
+      }
+
+      w.clip--;
+      document.getElementById('ammoCur').textContent = w.clip;
+      sfxShoot(state.curWeapIdx);
+
+      const count = w.count || 1;
+      for (let i = 0; i < count; i++) {
+        let finalAngle = angle;
+        if (w.spread) {
+          finalAngle += (Math.random() - 0.5) * w.spread;
+        }
+        state.bullets.push({
+          x: originX,
+          y: originY,
+          vx: Math.cos(finalAngle) * w.speed,
+          vy: Math.sin(finalAngle) * w.speed,
+          damage: w.damage,
+          color: w.color,
+          piercing: w.piercing || false,
+          life: 120
+        });
+      }
+    }
+
+    function defeatBoss() {
+      state.boss.defeated = true;
+      state.boss.active = false;
+      document.getElementById('bossHud').style.opacity = '0';
+      document.getElementById('countdownBanner').classList.add('hidden');
+
+      // Explosion effects
+      for (let i = 0; i < 80; i++) {
+        state.particles.push({
+          x: state.boss.x,
+          y: state.boss.y,
+          vx: (Math.random() - 0.5) * 16,
+          vy: (Math.random() - 0.5) * 16,
+          r: Math.random() * 6 + 2,
+          color: Math.random() > 0.5 ? '#ec4899' : '#a855f7',
+          life: 90
+        });
+      }
+
+      setTimeout(() => {
+        const m = String(Math.floor(state.secondsElapsed / 60)).padStart(2, '0');
+        const s = String(state.secondsElapsed % 60).padStart(2, '0');
+        document.getElementById('vicTime').textContent = `${m}:${s}`;
+        const acc = state.shotsFired > 0 ? Math.round((state.shotsHit / state.shotsFired) * 100) : 100;
+        document.getElementById('vicAcc').textContent = `${acc}%`;
+        document.getElementById('vicDmg').textContent = state.totalDamageDealt;
+        document.getElementById('modalVictory').classList.remove('hidden');
+      }, 1500);
+    }
+
+    function restartGame() {
+      window.location.reload();
+    }
+
+    // --- PARTICLE HELPERS ---
+    function spawnDamageNum(x, y, amount, color = '#f87171') {
+      state.particles.push({
+        x: x + (Math.random() - 0.5) * 20,
+        y: y,
+        text: `-${amount}`,
+        vy: -1.5,
+        color: color,
+        life: 45
+      });
+    }
+
+    function spawnSlashParticle(x, y, angle) {
+      state.particles.push({
+        x: x + Math.cos(angle) * 40,
+        y: y + Math.sin(angle) * 40,
+        slash: true,
+        angle: angle,
+        life: 15
+      });
+    }
+
+    // --- MAIN PHYSICS & SIMULATION UPDATE ---
+    function updatePhysics() {
+      const p = state.player;
+
+      // Locomotion Input
+      let moveDir = 0;
+      if (keys['a'] || keys['arrowleft']) moveDir -= 1;
+      if (keys['d'] || keys['arrowright']) moveDir += 1;
+
+      if (moveDir !== 0) {
+        p.vx = moveDir * p.speed;
+        p.facingRight = moveDir > 0;
+      } else {
+        p.vx *= 0.78; // Deceleration
+      }
+
+      // Jump & Double Jump Jetpack
+      if ((keys['w'] || keys[' '] || keys['arrowup']) && p.isGrounded) {
+        p.vy = -p.jumpForce;
+        p.isGrounded = false;
+        playTone(320, 'sine', 0.1, 0.05);
+      }
+
+      // Phantom Dash (Shift or Alt)
+      if (p.dashCooldown > 0) p.dashCooldown -= 0.016;
+      const staminaPct = Math.max(0, 1 - (p.dashCooldown / p.dashMaxCooldown));
+      document.getElementById('staminaBar').style.width = `${staminaPct * 100}%`;
+      document.getElementById('staminaNum').textContent = staminaPct >= 1 ? 'READY' : 'CHARGING';
+
+      if ((keys['shift'] || keys['alt']) && p.dashCooldown <= 0 && Math.abs(p.vx) > 0.1) {
+        p.isDashing = true;
+        p.dashTimer = 0.22;
+        p.dashCooldown = p.dashMaxCooldown;
+        p.vx = (p.facingRight ? 1 : -1) * 16;
+        sfxDash();
+      }
+
+      if (p.isDashing) {
+        p.dashTimer -= 0.016;
+        if (p.dashTimer <= 0) p.isDashing = false;
+        // Spawn ghost afterimage
+        p.afterimages.push({ x: p.x, y: p.y, alpha: 0.6, facingRight: p.facingRight });
+      }
+
+      // Apply Gravity
+      p.vy += 0.58;
+
+      // Update positions
+      p.x += p.vx;
+      p.y += p.vy;
+
+      // Platform collisions
+      p.isGrounded = false;
+      for (let plat of state.platforms) {
+        if (p.x + p.width > plat.x && p.x < plat.x + plat.w) {
+          // Landing on platform top
+          if (p.y + p.height >= plat.y && p.y + p.height <= plat.y + 24 && p.vy >= 0) {
+            p.y = plat.y - p.height;
+            p.vy = 0;
+            p.isGrounded = true;
+          }
+        }
+      }
+
+      // Bullets update
+      for (let i = state.bullets.length - 1; i >= 0; i--) {
+        const b = state.bullets[i];
+        b.x += b.vx;
+        b.y += b.vy;
+        b.life--;
+
+        // Collision with platforms
+        for (let plat of state.platforms) {
+          if (b.x >= plat.x && b.x <= plat.x + plat.w && b.y >= plat.y && b.y <= plat.y + plat.h) {
+            b.life = 0;
+            break;
+          }
+        }
+
+        // Collision with Drones
+        for (let d of state.drones) {
+          if (Math.hypot(b.x - d.x, b.y - d.y) < d.r) {
+            d.hp -= b.damage;
+            state.totalDamageDealt += b.damage;
+            state.shotsHit++;
+            spawnDamageNum(d.x, d.y - 15, b.damage, '#38bdf8');
+            sfxHit();
+            if (!b.piercing) b.life = 0;
+            break;
+          }
+        }
+
+        // Collision with Boss
+        const boss = state.boss;
+        if (boss.active && Math.hypot(b.x - boss.x, b.y - boss.y) < boss.w / 2) {
+          state.shotsHit++;
+          state.totalDamageDealt += b.damage;
+          sfxHit();
+
+          if (boss.armor > 0) {
+            boss.armor -= b.damage;
+            spawnDamageNum(boss.x, boss.y - 30, b.damage, '#fbbf24');
+            if (boss.armor <= 0) {
+              boss.armor = 0;
+              boss.phase = 3; // Exposed Core!
+              showNotification("⚡ ARCHON ARMOR SHATTERED! CORE EXPOSED — EXTRACT NOW!");
+              updateDirective();
+            }
+          } else {
+            boss.hp -= b.damage;
+            spawnDamageNum(boss.x, boss.y - 30, b.damage, '#f87171');
+            if (boss.hp <= 0) defeatBoss();
+          }
+
+          if (!b.piercing) b.life = 0;
+        }
+
+        if (b.life <= 0) state.bullets.splice(i, 1);
+      }
+
+      // Drone logic
+      for (let i = state.drones.length - 1; i >= 0; i--) {
+        const d = state.drones[i];
+        d.x += d.vx;
+        if (Math.random() < 0.02) d.vx *= -1;
+
+        // Damage player on touch
+        if (Math.hypot(d.x - (p.x + p.width/2), d.y - (p.y + p.height/2)) < d.r + 14 && !p.isDashing) {
+          damagePlayer(12);
+        }
+
+        if (d.hp <= 0) {
+          // Drone destroyed
+          for (let k = 0; k < 12; k++) {
+            state.particles.push({
+              x: d.x, y: d.y,
+              vx: (Math.random() - 0.5) * 6,
+              vy: (Math.random() - 0.5) * 6,
+              r: 3, color: '#38bdf8', life: 25
+            });
+          }
+          state.drones.splice(i, 1);
+        }
+      }
+
+      // Boss encounter logic (activates in Sector 4)
+      if (p.x > 2950 && !state.boss.active && !state.boss.defeated) {
+        state.boss.active = true;
+        document.getElementById('bossHud').style.opacity = '1';
+        document.getElementById('bossHud').classList.remove('-translate-y-4');
+        showNotification("⚠️ WARNING: HIGH-MASS BIO-SYNTHETIC ARCHON DETECTED!");
+        sfxAlarm();
+      }
+
+      if (state.boss.active && !state.boss.defeated) {
+        const b = state.boss;
+        const targetX = p.x + p.width/2;
+        const dx = targetX - b.x;
+
+        if (b.phase === 1) { // Stalk
+          b.vx = Math.sign(dx) * 2.2;
+        } else if (b.phase === 2 || b.phase === 4) { // Charge & Void Enrage
+          b.vx = Math.sign(dx) * (b.phase === 4 ? 6.5 : 4.5);
+        } else if (b.phase === 3) { // Staggered
+          b.vx = 0;
+        }
+
+        b.x += b.vx;
+
+        // Boss damage on collision
+        if (Math.hypot(b.x - (p.x + p.width/2), b.y - (p.y + p.height/2)) < b.w/2 + 10 && !p.isDashing) {
+          damagePlayer(b.phase === 4 ? 35 : 22);
+        }
+
+        // Update Boss HUD Bars
+        document.getElementById('bossArmorBar').style.width = `${(b.armor / b.maxArmor) * 100}%`;
+        document.getElementById('bossHpBar').style.width = `${(b.hp / b.maxHp) * 100}%`;
+        document.getElementById('bossHpText').textContent = `${Math.round((b.hp / b.maxHp) * 100)}%`;
+        document.getElementById('bossPhaseBadge').textContent = b.phase === 4 ? 'VOID ENRAGED' : (b.phase === 3 ? 'CORE EXPOSED' : `PHASE ${b.phase}`);
+      }
+
+      // Smooth Camera Follow
+      const targetCamX = p.x + p.width/2 - width / 2;
+      const targetCamY = p.y + p.height/2 - height / 2;
+      state.camera.x += (targetCamX - state.camera.x) * 0.08;
+      state.camera.y += (targetCamY - state.camera.y) * 0.08;
+
+      // Continuous firing if mouse held
+      if (mouse.down) shoot();
+    }
+
+    function damagePlayer(amount) {
+      const p = state.player;
+      if (p.isDashing) return;
+
+      if (p.shield > 0) {
+        p.shield -= amount;
+        if (p.shield < 0) {
+          p.hp += p.shield;
+          p.shield = 0;
+        }
+      } else {
+        p.hp -= amount;
+      }
+
+      sfxHit();
+      document.getElementById('hpBar').style.width = `${Math.max(0, (p.hp / p.maxHp) * 100)}%`;
+      document.getElementById('hpNum').textContent = `${Math.ceil(Math.max(0, p.hp))} / ${p.maxHp}`;
+      document.getElementById('shieldBar').style.width = `${Math.max(0, (p.shield / p.maxShield) * 100)}%`;
+      document.getElementById('shieldNum').textContent = `${Math.ceil(Math.max(0, p.shield))}%`;
+
+      if (p.hp <= 0) {
+        document.getElementById('modalGameOver').classList.remove('hidden');
+      }
+    }
+
+    // --- CANVAS RENDERING PIPELINE ---
+    function render() {
+      ctx.clearRect(0, 0, width, height);
+
+      const camX = state.camera.x;
+      const camY = state.camera.y;
+
+      // 1. Parallax Deep Space Starfield
+      ctx.fillStyle = '#050811';
+      ctx.fillRect(0, 0, width, height);
+
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
+      for (let i = 0; i < 40; i++) {
+        let sx = ((i * 123) - camX * 0.15) % width;
+        let sy = ((i * 247) - camY * 0.15) % height;
+        if (sx < 0) sx += width;
+        if (sy < 0) sy += height;
+        ctx.fillRect(sx, sy, 1.5, 1.5);
+      }
+
+      // 2. Spaceship Hull Platforms & Walls
+      for (let plat of state.platforms) {
+        const screenX = plat.x - camX;
+        const screenY = plat.y - camY;
+
+        // Main platform body
+        ctx.fillStyle = '#0f172a';
+        ctx.fillRect(screenX, screenY, plat.w, plat.h);
+
+        // Tech grating border
+        ctx.strokeStyle = '#1e293b';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(screenX, screenY, plat.w, plat.h);
+
+        // Surface neon runner
+        ctx.strokeStyle = '#38bdf8';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(screenX, screenY);
+        ctx.lineTo(screenX + plat.w, screenY);
+        ctx.stroke();
+      }
+
+      // 3. Interactive Stations / Terminals
+      for (let term of state.interactables) {
+        const tx = term.x - camX;
+        const ty = term.y - camY;
+
+        ctx.fillStyle = 'rgba(6, 182, 212, 0.15)';
+        ctx.beginPath();
+        ctx.arc(tx, ty, term.r, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.strokeStyle = '#06b6d4';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(tx, ty, 14, 0, Math.PI * 2);
+        ctx.stroke();
+
+        ctx.fillStyle = '#38bdf8';
+        ctx.font = '10px monospace';
+        ctx.fillText(term.title, tx - 40, ty - 24);
+      }
+
+      // 4. Drones
+      for (let d of state.drones) {
+        const dx = d.x - camX;
+        const dy = d.y - camY;
+
+        ctx.fillStyle = '#dc2626';
+        ctx.beginPath();
+        ctx.arc(dx, dy, d.r, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.fillStyle = '#f87171';
+        ctx.beginPath();
+        ctx.arc(dx, dy, 6, 0, Math.PI * 2);
+        ctx.fill();
+
+        // HP bar above drone
+        ctx.fillStyle = '#000';
+        ctx.fillRect(dx - 16, dy - 24, 32, 4);
+        ctx.fillStyle = '#22c55e';
+        ctx.fillRect(dx - 16, dy - 24, (d.hp / d.maxHp) * 32, 4);
+      }
+
+      // 5. Boss: Bio-Synthetic Archon
+      const b = state.boss;
+      if (b.active && !b.defeated) {
+        const bx = b.x - camX;
+        const by = b.y - camY;
+
+        ctx.save();
+        ctx.translate(bx, by);
+
+        // Chitin Shell
+        ctx.fillStyle = b.phase === 4 ? '#701a75' : (b.phase === 3 ? '#1e1b4b' : '#3f1119');
+        ctx.beginPath();
+        ctx.arc(0, 0, b.w / 2, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Glowing Core
+        ctx.fillStyle = b.phase === 3 ? '#ec4899' : (b.phase === 4 ? '#ef4444' : '#e11d48');
+        ctx.beginPath();
+        ctx.arc(0, 0, 20, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Horns / Spikes
+        ctx.strokeStyle = '#f43f5e';
+        ctx.lineWidth = 4;
+        ctx.beginPath();
+        ctx.moveTo(-30, -30); ctx.lineTo(-45, -50);
+        ctx.moveTo(30, -30); ctx.lineTo(45, -50);
+        ctx.stroke();
+
+        ctx.restore();
+      }
+
+      // 6. Player Afterimages (Phantom Dash)
+      for (let i = state.player.afterimages.length - 1; i >= 0; i--) {
+        const img = state.player.afterimages[i];
+        img.alpha -= 0.05;
+        if (img.alpha <= 0) {
+          state.player.afterimages.splice(i, 1);
+          continue;
+        }
+        ctx.fillStyle = `rgba(56, 189, 248, ${img.alpha})`;
+        ctx.fillRect(img.x - camX, img.y - camY, state.player.width, state.player.height);
+      }
+
+      // 7. Player Character
+      const p = state.player;
+      const px = p.x - camX;
+      const py = p.y - camY;
+
+      // Cyber Suit Body
+      ctx.fillStyle = '#1e293b';
+      ctx.fillRect(px, py, p.width, p.height);
+
+      // Cyan Visor
+      ctx.fillStyle = '#22d3ee';
+      const visorX = p.facingRight ? px + 12 : px + 2;
+      ctx.fillRect(visorX, py + 8, 10, 6);
+
+      // Cyber Armor accents
+      ctx.fillStyle = '#0ea5e9';
+      ctx.fillRect(px + 4, py + 20, p.width - 8, 12);
+
+      // Aiming Weapon Line
+      const aimAngle = Math.atan2((mouse.y + camY) - (p.y + p.height/2), (mouse.x + camX) - (p.x + p.width/2));
+      ctx.strokeStyle = state.weapons[state.curWeapIdx].color;
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.moveTo(px + p.width/2, py + p.height/2);
+      ctx.lineTo(px + p.width/2 + Math.cos(aimAngle) * 22, py + p.height/2 + Math.sin(aimAngle) * 22);
+      ctx.stroke();
+
+      // 8. Bullets & Tracers
+      for (let bullet of state.bullets) {
+        ctx.fillStyle = bullet.color;
+        ctx.beginPath();
+        ctx.arc(bullet.x - camX, bullet.y - camY, 3.5, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      // 9. Floating Particles & Numbers
+      for (let i = state.particles.length - 1; i >= 0; i--) {
+        const pt = state.particles[i];
+        pt.life--;
+
+        if (pt.text) {
+          pt.y += pt.vy;
+          ctx.fillStyle = pt.color;
+          ctx.font = 'bold 13px monospace';
+          ctx.fillText(pt.text, pt.x - camX, pt.y - camY);
+        } else if (pt.slash) {
+          ctx.save();
+          ctx.translate(pt.x - camX, pt.y - camY);
+          ctx.rotate(pt.angle);
+          ctx.strokeStyle = '#ec4899';
+          ctx.lineWidth = 6;
+          ctx.beginPath();
+          ctx.arc(0, 0, 50, -0.6, 0.6);
+          ctx.stroke();
+          ctx.restore();
+        } else {
+          pt.x += pt.vx;
+          pt.y += pt.vy;
+          ctx.fillStyle = pt.color;
+          ctx.beginPath();
+          ctx.arc(pt.x - camX, pt.y - camY, pt.r, 0, Math.PI * 2);
+          ctx.fill();
+        }
+
+        if (pt.life <= 0) state.particles.splice(i, 1);
+      }
+    }
+
+    // --- MAIN ANIMATION LOOP ---
+    function loop() {
+      updatePhysics();
+      render();
+      requestAnimationFrame(loop);
+    }
+    requestAnimationFrame(loop);
+  </script>
+</body>
+</html>

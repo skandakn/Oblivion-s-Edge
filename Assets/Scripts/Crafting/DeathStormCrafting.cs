@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 using OblivionsEdge.Boss;
+using OblivionsEdge.Core;
 using OblivionsEdge.Inventory;
 
 namespace OblivionsEdge.DeathStorm
@@ -12,17 +13,16 @@ namespace OblivionsEdge.DeathStorm
     //
     //  Responsibilities:
     //    · Validate that Edge, Handle and Core are all present in the inventory.
-    //    · Start a shared 60-second countdown the moment the Core is collected.
+    //    · Run a strict 60-second synthesis countdown once crafting commences.
     //    · Drive three sequential puzzle stages (Core alignment → Edge sync →
     //      Energy stabilise).
-    //    · Wrong answers cost time, but crafting may continue unless clock hits 0.
-    //    · On timeout fire OnCountdownExpired (firstTimeOut=true) → boss ENRAGED,
-    //      VOID POUNCE enabled.  Subsequent timeouts reuse firstTimeOut=false.
-    //    · On success set HasDeathStorm and fire OnCraftingSuccess.
-    //    · Allow crafting to restart after a timeout if the player survives.
+    //    · Wrong answers deduct time penalty without soft-locking the mini-game.
+    //    · On timeout, trigger boss ENRAGED phase and enable VOID POUNCE.
+    //    · On completion: forge the legendary weapon DeathStorm and notify inventory.
+    //    · Allow crafting to restart after timeout if the player survives.
     //
-    //  Members 5 (IInventory) and 9 (IBossController) are referenced only through
-    //  their interfaces — no concrete-class coupling.
+    //  Members 5 (IInventory), 8 (Core Puzzle), and 5/3 (IBossController) are
+    //  coordinated via decoupled interfaces and resilient messaging.
     // ─────────────────────────────────────────────────────────────────────────
 
     /// <summary>
@@ -33,42 +33,42 @@ namespace OblivionsEdge.DeathStorm
     public class DeathStormCrafting : MonoBehaviour, IDeathStormCrafting
     {
         // ── Inspector-configurable values ──────────────────────────────────
-        [Header("Item IDs (must match Member 5 ItemData)")]
+        [Header("Item IDs (matches Member 9 InventorySystem)")]
         [SerializeField] private string _edgeItemId   = "deathstorm_edge";
         [SerializeField] private string _handleItemId = "deathstorm_handle";
         [SerializeField] private string _coreItemId   = "deathstorm_core";
 
         [Header("Countdown")]
-        [Tooltip("Total crafting window in seconds.")]
+        [Tooltip("Total crafting window in seconds (strict 60s synthesis timer).")]
         [SerializeField] private float _countdownTotal = 60f;
 
         [Header("Wrong-Answer Penalty")]
-        [Tooltip("Seconds deducted from the timer per wrong answer.")]
+        [Tooltip("Seconds deducted from the timer per wrong answer without soft-locking.")]
         [SerializeField] private float _wrongAnswerPenalty = 5f;
 
         [Header("Stage 1 — Core Alignment (4-direction)")]
-        [Tooltip("Correct cardinal direction index: 0=North 1=East 2=South 3=West")]
-        [SerializeField] private int _coreAlignmentAnswer = 2;   // South by default
+        [Tooltip("Correct cardinal direction index: 0=North 1=East 2=South 3=West (South per Kira's note)")]
+        [SerializeField] private int _coreAlignmentAnswer = 2;
 
         [Header("Stage 2 — Edge Sync (angle buckets 0-5)")]
-        [Tooltip("Correct angle bucket index (0-5 → 60° increments starting at 0°)")]
+        [Tooltip("Correct angle bucket index: 0-5 → 60° increments starting at 0° (Bucket 3 = 180° per Kira's note)")]
         [SerializeField] private int _edgeSyncAnswer = 3;
 
         [Header("Stage 3 — Energy Stabilise (directional sequence length 3)")]
-        [Tooltip("Three-step directional channel sequence: 0=N 1=E 2=S 3=W")]
+        [Tooltip("Three-step directional channel sequence: 0=N 1=E 2=S 3=W (East, West, North = 1, 3, 0)")]
         [SerializeField] private List<int> _stabiliseSequence = new List<int> { 1, 3, 0 };
 
-        [Header("Dependencies (injected by scene or DI)")]
-        [Tooltip("Member 3's IBossController implementation.")]
+        [Header("Dependencies (injected by scene, DI, or auto-resolved)")]
+        [Tooltip("Member 3/5 IBossController implementation.")]
         [SerializeField] private MonoBehaviour _bossControllerMono;
-        [Tooltip("Member 5's IInventory implementation attached to the player.")]
+        [Tooltip("Member 9 IInventory implementation attached to the player.")]
         [SerializeField] private MonoBehaviour _playerInventoryMono;
 
         // ── Runtime state ──────────────────────────────────────────────────
         private IBossController _boss;
         private IInventory      _inventory;
 
-        private CraftingStage _currentStage      = CraftingStage.Idle;
+        private CraftingStage _currentStage       = CraftingStage.Idle;
         private float         _countdownRemaining = 0f;
         private bool          _countdownRunning   = false;
         private bool          _hasDeathStorm      = false;
@@ -76,6 +76,9 @@ namespace OblivionsEdge.DeathStorm
 
         // Stage 3 sub-step index
         private int _stabiliseStep = 0;
+
+        // Stage interrupted on timeout
+        private CraftingStage _resumeStage = CraftingStage.CoreAlignment;
 
         // ── IDeathStormCrafting ────────────────────────────────────────────
         public CraftingStage CurrentStage       => _currentStage;
@@ -95,14 +98,34 @@ namespace OblivionsEdge.DeathStorm
         // ── Unity lifecycle ────────────────────────────────────────────────
         private void Awake()
         {
-            // Resolve interfaces from serialised MonoBehaviours (avoids hard deps)
+            // Resolve interfaces from serialized MonoBehaviours (avoids hard deps)
             _boss      = _bossControllerMono  as IBossController;
             _inventory = _playerInventoryMono as IInventory;
 
-            if (_boss == null)
-                Debug.LogWarning("[DeathStormCrafting] BossController not assigned or does not implement IBossController.");
+            // Auto-resolve fallbacks if not assigned in Inspector
             if (_inventory == null)
-                Debug.LogWarning("[DeathStormCrafting] PlayerInventory not assigned or does not implement IInventory.");
+            {
+                var player = GameObject.FindGameObjectWithTag(GameConstants.TagPlayer);
+                if (player != null)
+                {
+                    _inventory = player.GetComponentInParent<IInventory>();
+                    if (_inventory == null) _inventory = player.GetComponentInChildren<IInventory>();
+                }
+                if (_inventory == null)
+                {
+                    _inventory = FindFirstObjectByType<InventorySystem>() as IInventory;
+                }
+            }
+
+            if (_boss == null)
+            {
+                var bossGo = GameObject.FindGameObjectWithTag(GameConstants.TagBoss);
+                if (bossGo != null)
+                {
+                    _boss = bossGo.GetComponentInParent<IBossController>();
+                    if (_boss == null) _boss = bossGo.GetComponentInChildren<IBossController>();
+                }
+            }
         }
 
         private void Update()
@@ -122,27 +145,35 @@ namespace OblivionsEdge.DeathStorm
         // ── Public API ────────────────────────────────────────────────────
 
         /// <summary>
-        /// Called by the Core pickup (ItemPickup handler) the moment the Core
-        /// enters the player's inventory.  Validates all three components are
-        /// present before starting the countdown and entering Stage 1.
+        /// Explicit starting trigger for crafting synthesis. Validates all three components
+        /// (Edge, Handle, Core) are present before commencing the 60-second countdown.
         /// </summary>
-        public void NotifyCoreCollected()
+        public bool StartCrafting()
         {
-            if (_hasDeathStorm || _currentStage == CraftingStage.Complete) return;
+            if (_hasDeathStorm || _currentStage == CraftingStage.Complete) return false;
 
             if (!ValidateComponents(out string reason))
             {
                 Debug.LogWarning($"[DeathStormCrafting] Cannot start — {reason}");
-                return;
+                return false;
             }
 
             StartCountdown();
             TransitionTo(CraftingStage.CoreAlignment);
+            return true;
         }
 
         /// <summary>
-        /// Resume crafting after timeout if the player survived the ENRAGED phase.
-        /// Resets the countdown to give a fresh window.
+        /// Called by Member 8/9 Core pickup the moment the Core is collected from the containment puzzle.
+        /// </summary>
+        public void NotifyCoreCollected()
+        {
+            StartCrafting();
+        }
+
+        /// <summary>
+        /// Resume crafting after timeout if the player survived the ENRAGED boss phase.
+        /// Resets the countdown to give a fresh 60s window.
         /// </summary>
         public void ResumeAfterTimeout()
         {
@@ -153,9 +184,6 @@ namespace OblivionsEdge.DeathStorm
             _countdownRemaining = _countdownTotal;
             _countdownRunning   = true;
 
-            // Re-enter whichever stage was active when the clock hit zero
-            // (stages are preserved — _currentStage is set back to TimedOut only
-            //  in HandleTimeout, so we need to remember the interrupted stage)
             TransitionTo(_resumeStage);
         }
 
@@ -184,10 +212,30 @@ namespace OblivionsEdge.DeathStorm
 
         private bool ValidateComponents(out string reason)
         {
-            if (_inventory == null) { reason = "IInventory not available."; return false; }
-            if (!_inventory.HasItem(_edgeItemId))   { reason = "Missing Edge component.";   return false; }
-            if (!_inventory.HasItem(_handleItemId)) { reason = "Missing Handle component."; return false; }
-            if (!_inventory.HasItem(_coreItemId))   { reason = "Missing Core component.";   return false; }
+            if (_inventory == null)
+            {
+                reason = "IInventory not available.";
+                return false;
+            }
+
+            if (!_inventory.HasItem(_edgeItemId))
+            {
+                reason = "Missing Edge component (deathstorm_edge).";
+                return false;
+            }
+
+            if (!_inventory.HasItem(_handleItemId))
+            {
+                reason = "Missing Handle component (deathstorm_handle).";
+                return false;
+            }
+
+            if (!_inventory.HasItem(_coreItemId))
+            {
+                reason = "Missing Core component (deathstorm_core).";
+                return false;
+            }
+
             reason = string.Empty;
             return true;
         }
@@ -197,9 +245,6 @@ namespace OblivionsEdge.DeathStorm
             _countdownRemaining = _countdownTotal;
             _countdownRunning   = true;
         }
-
-        // Stage that was interrupted when the timer expired
-        private CraftingStage _resumeStage = CraftingStage.CoreAlignment;
 
         private void TransitionTo(CraftingStage stage)
         {
@@ -230,12 +275,23 @@ namespace OblivionsEdge.DeathStorm
 
         private void EnableVoidPounce()
         {
-            // Broadcast a Unity message so the boss prefab's VoidPounce component
-            // can self-enable without creating a hard dependency here.
+            // Broadcast messages so the boss AI / VoidPounce component can react
             if (_boss is MonoBehaviour bm)
+            {
                 bm.SendMessage("EnableVoidPounce", SendMessageOptions.DontRequireReceiver);
+                bm.SendMessage("NotifyCraftingTimerElapsed", SendMessageOptions.DontRequireReceiver);
+            }
+            else
+            {
+                var bossGo = GameObject.FindGameObjectWithTag(GameConstants.TagBoss);
+                if (bossGo != null)
+                {
+                    bossGo.SendMessage("EnableVoidPounce", SendMessageOptions.DontRequireReceiver);
+                    bossGo.SendMessage("NotifyCraftingTimerElapsed", SendMessageOptions.DontRequireReceiver);
+                }
+            }
 
-            Debug.Log("[DeathStormCrafting] VOID POUNCE enabled on boss.");
+            Debug.Log("[DeathStormCrafting] VOID POUNCE and Enrage enabled on boss.");
         }
 
         // ── Stage handlers ─────────────────────────────────────────────────
@@ -266,7 +322,6 @@ namespace OblivionsEdge.DeathStorm
         {
             if (_stabiliseStep >= _stabiliseSequence.Count)
             {
-                // Sequence already completed (defensive guard)
                 return false;
             }
 
@@ -275,16 +330,14 @@ namespace OblivionsEdge.DeathStorm
                 _stabiliseStep++;
                 if (_stabiliseStep >= _stabiliseSequence.Count)
                 {
-                    // All steps correct → success!
                     CompleteCrafting();
                     return true;
                 }
-                // Correct but more steps remain — fire stage-changed to update UI prompt
                 OnStageChanged?.Invoke(CraftingStage.EnergyStabilise);
                 return true;
             }
 
-            // Wrong step: reset sequence back to start but keep timer penalty
+            // Wrong step: reset sequence back to start of stage 3 but keep timer penalty
             _stabiliseStep = 0;
             ApplyWrongAnswerPenalty();
             return false;
@@ -302,6 +355,17 @@ namespace OblivionsEdge.DeathStorm
             _countdownRunning = false;
             _hasDeathStorm    = true;
             _currentStage     = CraftingStage.Complete;
+
+            // Notify Member 9 InventorySystem
+            if (_inventory is InventorySystem invSys)
+            {
+                invSys.NotifyDeathStormCrafted();
+            }
+            else if (_inventory is MonoBehaviour mb)
+            {
+                mb.SendMessage("NotifyDeathStormCrafted", SendMessageOptions.DontRequireReceiver);
+            }
+
             OnStageChanged?.Invoke(CraftingStage.Complete);
             OnCraftingSuccess?.Invoke();
             Debug.Log("[DeathStormCrafting] ★ DeathStorm forged! hasDeathStorm = true");
@@ -312,17 +376,17 @@ namespace OblivionsEdge.DeathStorm
             switch (_currentStage)
             {
                 case CraftingStage.Idle:
-                    return "Collect all three DeathStorm components to begin forging.";
+                    return "Collect all three DeathStorm components (Edge, Handle, Core) to begin forging.";
                 case CraftingStage.CoreAlignment:
-                    return "Stage 1 — Core Alignment: channel the Core's energy. Select the correct cardinal direction (North / East / South / West).";
+                    return "Stage 1 — Core Alignment: channel the Core's polarity. Select cardinal direction (0=North, 1=East, 2=South, 3=West).";
                 case CraftingStage.EdgeSync:
-                    return $"Stage 2 — Edge Synchronisation: align the angular resonance field. Select angle sector (0–5) matching the Edge frequency.";
+                    return "Stage 2 — Edge Synchronisation: align resonance field. Select angle sector (0–5) matching Edge frequency.";
                 case CraftingStage.EnergyStabilise:
-                    return $"Stage 3 — Energy Stabilisation [{_stabiliseStep + 1}/{_stabiliseSequence.Count}]: direct the energy pulse. Select the required channel (N/E/S/W).";
+                    return $"Stage 3 — Energy Stabilisation [{_stabiliseStep + 1}/{_stabiliseSequence.Count}]: direct pulse channel. Select channel (0=N, 1=E, 2=S, 3=W).";
                 case CraftingStage.Complete:
-                    return "DeathStorm forged! The legendary weapon is yours.";
+                    return "DeathStorm forged! The legendary weapon is ready for the final strike.";
                 case CraftingStage.TimedOut:
-                    return "TIME EXPIRED — Survive the ENRAGED boss. You may resume crafting if you endure.";
+                    return "SYNTHESIS TIMEOUT — Survive the ENRAGED boss. Resume crafting once the window reopens.";
                 default:
                     return string.Empty;
             }
