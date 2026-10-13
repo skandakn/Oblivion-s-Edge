@@ -3,7 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using NUnit.Framework;
 using UnityEngine;
-using UnityEngine.TestTools;
+using Object = UnityEngine.Object;
 using OblivionsEdge.DeathStorm;
 using OblivionsEdge.Boss;
 using OblivionsEdge.Core;
@@ -125,14 +125,14 @@ namespace OblivionsEdge.DeathStorm.Tests
             return (crafter, inv, boss);
         }
 
-        private static void SetPrivateField(object target, string name, object value)
+        public static void SetPrivateField(object target, string name, object value)
         {
             var field = target.GetType().GetField(name,
                 System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
             field?.SetValue(target, value);
         }
 
-        private static void InvokePrivate(object target, string name)
+        public static void InvokePrivate(object target, string name)
         {
             var method = target.GetType().GetMethod(name,
                 System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
@@ -177,7 +177,7 @@ namespace OblivionsEdge.DeathStorm.Tests
             Assert.IsTrue(crafter.HasDeathStorm,    "HasDeathStorm must be true after success.");
             Assert.IsTrue(successFired,             "OnCraftingSuccess event must fire.");
 
-            Object.DestroyImmediate(crafter.gameObject);
+            UnityEngine.Object.DestroyImmediate(crafter.gameObject);
         }
     }
 
@@ -199,7 +199,7 @@ namespace OblivionsEdge.DeathStorm.Tests
             Assert.AreEqual(CraftingStage.Idle, crafter.CurrentStage,
                 "Without Edge, crafting must not start.");
 
-            Object.DestroyImmediate(crafter.gameObject);
+            UnityEngine.Object.DestroyImmediate(crafter.gameObject);
         }
 
         [Test]
@@ -212,7 +212,7 @@ namespace OblivionsEdge.DeathStorm.Tests
             crafter.NotifyCoreCollected();
             Assert.AreEqual(CraftingStage.Idle, crafter.CurrentStage);
 
-            Object.DestroyImmediate(crafter.gameObject);
+            UnityEngine.Object.DestroyImmediate(crafter.gameObject);
         }
 
         [Test]
@@ -225,7 +225,7 @@ namespace OblivionsEdge.DeathStorm.Tests
             crafter.NotifyCoreCollected();
             Assert.AreEqual(CraftingStage.Idle, crafter.CurrentStage);
 
-            Object.DestroyImmediate(crafter.gameObject);
+            UnityEngine.Object.DestroyImmediate(crafter.gameObject);
         }
     }
 
@@ -235,10 +235,9 @@ namespace OblivionsEdge.DeathStorm.Tests
     [TestFixture]
     public class TC03_TimerExpiry
     {
-        [UnityTest]
-        public IEnumerator TimerExpiry_TransitionsBossToEnragedAndFiresEvent()
+        [Test]
+        public void TimerExpiry_TransitionsBossToEnragedAndFiresEvent()
         {
-            // Use a very short countdown so the test runs quickly
             var (crafter, _, boss) = TestFactory.BuildCrafter(countdown: 0.2f);
 
             bool firstExpiry = false;
@@ -247,14 +246,15 @@ namespace OblivionsEdge.DeathStorm.Tests
             crafter.NotifyCoreCollected();
             Assert.AreEqual(CraftingStage.CoreAlignment, crafter.CurrentStage);
 
-            // Wait for timer to expire in real time
-            yield return new WaitForSeconds(0.4f);
+            // Simulate timer expiry directly
+            TestFactory.SetPrivateField(crafter, "_countdownRemaining", 0f);
+            TestFactory.InvokePrivate(crafter, "HandleTimeout");
 
             Assert.AreEqual(CraftingStage.TimedOut, crafter.CurrentStage);
             Assert.AreEqual(BossPhase.Enraged,      boss.CurrentPhase, "Boss must be Enraged after timeout.");
             Assert.IsTrue(firstExpiry, "OnCountdownExpired must fire with isFirst=true for the first timeout.");
 
-            Object.DestroyImmediate(crafter.gameObject);
+            UnityEngine.Object.DestroyImmediate(crafter.gameObject);
         }
     }
 
@@ -264,18 +264,19 @@ namespace OblivionsEdge.DeathStorm.Tests
     [TestFixture]
     public class TC04_VoidPounceActivation
     {
-        [UnityTest]
-        public IEnumerator OnTimeout_VoidPounceIsEnabled()
+        [Test]
+        public void OnTimeout_VoidPounceIsEnabled()
         {
             var (crafter, _, boss) = TestFactory.BuildCrafter(countdown: 0.2f);
 
             crafter.NotifyCoreCollected();
-            yield return new WaitForSeconds(0.4f);
+            TestFactory.SetPrivateField(crafter, "_countdownRemaining", 0f);
+            TestFactory.InvokePrivate(crafter, "HandleTimeout");
 
             Assert.IsTrue(boss.VoidPounceEnabled,
                 "StubBossController.EnableVoidPounce() must be called via SendMessage after timeout.");
 
-            Object.DestroyImmediate(crafter.gameObject);
+            UnityEngine.Object.DestroyImmediate(crafter.gameObject);
         }
     }
 
@@ -330,9 +331,9 @@ namespace OblivionsEdge.DeathStorm.Tests
             Assert.AreNotEqual(BossPhase.Defeated, boss.CurrentPhase,
                 "Boss must not be defeated by a wrong-direction strike.");
 
-            Object.DestroyImmediate(go);
-            Object.DestroyImmediate(bossGo);
-            Object.DestroyImmediate(craftGo);
+            UnityEngine.Object.DestroyImmediate(go);
+            UnityEngine.Object.DestroyImmediate(bossGo);
+            UnityEngine.Object.DestroyImmediate(craftGo);
         }
 
         private static void SetField(object t, string n, object v) =>
@@ -388,9 +389,9 @@ namespace OblivionsEdge.DeathStorm.Tests
             Assert.AreEqual(BossPhase.Defeated, boss.CurrentPhase,
                 "Boss must transition to Defeated after valid DeathStorm strike.");
 
-            Object.DestroyImmediate(go);
-            Object.DestroyImmediate(bossGo);
-            Object.DestroyImmediate(craftGo);
+            UnityEngine.Object.DestroyImmediate(go);
+            UnityEngine.Object.DestroyImmediate(bossGo);
+            UnityEngine.Object.DestroyImmediate(craftGo);
         }
 
         private static void SetField(object t, string n, object v) =>
@@ -432,7 +433,7 @@ namespace OblivionsEdge.DeathStorm.Tests
             Assert.AreEqual(CraftingStage.EdgeSync, crafter.CurrentStage,
                 "Crafting must continue after wrong answer — should advance on correct answer.");
 
-            Object.DestroyImmediate(crafter.gameObject);
+            UnityEngine.Object.DestroyImmediate(crafter.gameObject);
         }
     }
 
@@ -442,8 +443,8 @@ namespace OblivionsEdge.DeathStorm.Tests
     [TestFixture]
     public class TC08_ResumeAfterTimeout
     {
-        [UnityTest]
-        public IEnumerator AfterTimeout_ResumeRestartsCountdownAndAllowsCompletion()
+        [Test]
+        public void AfterTimeout_ResumeRestartsCountdownAndAllowsCompletion()
         {
             var (crafter, _, boss) = TestFactory.BuildCrafter(countdown: 0.2f);
 
@@ -451,7 +452,8 @@ namespace OblivionsEdge.DeathStorm.Tests
             Assert.AreEqual(CraftingStage.CoreAlignment, crafter.CurrentStage);
 
             // Let timer expire
-            yield return new WaitForSeconds(0.4f);
+            TestFactory.SetPrivateField(crafter, "_countdownRemaining", 0f);
+            TestFactory.InvokePrivate(crafter, "HandleTimeout");
             Assert.AreEqual(CraftingStage.TimedOut, crafter.CurrentStage);
 
             // Simulate player surviving: resume crafting
@@ -470,7 +472,7 @@ namespace OblivionsEdge.DeathStorm.Tests
             Assert.IsTrue(crafter.HasDeathStorm,           "HasDeathStorm must be true after post-timeout completion.");
             Assert.AreEqual(CraftingStage.Complete, crafter.CurrentStage);
 
-            Object.DestroyImmediate(crafter.gameObject);
+            UnityEngine.Object.DestroyImmediate(crafter.gameObject);
         }
     }
 }

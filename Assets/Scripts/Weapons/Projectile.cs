@@ -94,7 +94,7 @@ namespace OblivionsEdge.Weapons
             _body.bodyType = RigidbodyType2D.Dynamic;
             _body.gravityScale = 0f;
             _body.collisionDetectionMode = CollisionDetectionMode2D.Continuous;
-            _body.velocity = _direction * Mathf.Max(0.1f, speed);
+            _body.linearVelocity = _direction * Mathf.Max(0.1f, speed);
             _body.angularVelocity = 0f;
             _body.rotation = Mathf.Atan2(_direction.y, _direction.x) * Mathf.Rad2Deg;
 
