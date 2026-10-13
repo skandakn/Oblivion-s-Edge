@@ -83,6 +83,27 @@ namespace OblivionsEdge.Weapons
                 _aimCamera = Camera.main;
             }
 
+            if (_muzzle == null)
+            {
+                Transform foundMuzzle = transform.Find("Muzzle");
+                if (foundMuzzle != null)
+                {
+                    _muzzle = foundMuzzle;
+                }
+                else
+                {
+                    GameObject muzzleObj = new GameObject("Muzzle");
+                    muzzleObj.transform.SetParent(transform, false);
+                    muzzleObj.transform.localPosition = new Vector3(0.6f, 0f, 0f);
+                    _muzzle = muzzleObj.transform;
+                }
+            }
+
+            if (_projectilePrefab == null)
+            {
+                _projectilePrefab = GetOrCreateDefaultProjectile();
+            }
+
             _projectilePrefabIsUsable = _projectilePrefab != null &&
                                         _projectilePrefab.GetComponent<Rigidbody2D>() != null &&
                                         _projectilePrefab.GetComponent<Collider2D>() != null;
@@ -90,6 +111,57 @@ namespace OblivionsEdge.Weapons
             {
                 Debug.LogError("The projectile prefab requires both a Rigidbody2D and a Collider2D.", this);
             }
+        }
+
+        private static Projectile _defaultRuntimeProjectile;
+
+        private static Projectile GetOrCreateDefaultProjectile()
+        {
+            if (_defaultRuntimeProjectile != null) return _defaultRuntimeProjectile;
+
+            GameObject boltObj = new GameObject("Runtime_Pulse_Bolt");
+            boltObj.layer = GameConstants.LayerPlayerProjectileIndex;
+            var rb = boltObj.AddComponent<Rigidbody2D>();
+            rb.bodyType = RigidbodyType2D.Dynamic;
+            rb.gravityScale = 0f;
+            rb.collisionDetectionMode = CollisionDetectionMode2D.Continuous;
+
+            var col = boltObj.AddComponent<CircleCollider2D>();
+            col.radius = 0.2f;
+            col.isTrigger = true;
+
+            var sr = boltObj.AddComponent<SpriteRenderer>();
+            sr.color = new Color(0.2f, 0.9f, 1f, 1f);
+            sr.sortingLayerName = "Environment";
+            sr.sortingOrder = 10;
+
+            Texture2D tex = new Texture2D(16, 8, TextureFormat.RGBA32, false);
+            for (int y = 0; y < 8; y++)
+            {
+                for (int x = 0; x < 16; x++)
+                {
+                    float dx = (x - 7.5f) / 7.5f;
+                    float dy = (y - 3.5f) / 3.5f;
+                    float dist = Mathf.Sqrt(dx * dx + dy * dy);
+                    if (dist <= 1f)
+                    {
+                        float alpha = Mathf.Clamp01(1f - dist * 0.7f);
+                        tex.SetPixel(x, y, new Color(0.3f, 0.9f, 1f, alpha));
+                    }
+                    else
+                    {
+                        tex.SetPixel(x, y, Color.clear);
+                    }
+                }
+            }
+            tex.Apply();
+            sr.sprite = Sprite.Create(tex, new Rect(0, 0, 16, 8), new Vector2(0.5f, 0.5f), 16f);
+
+            var proj = boltObj.AddComponent<Projectile>();
+            boltObj.SetActive(false);
+            boltObj.hideFlags = HideFlags.HideAndDontSave;
+            _defaultRuntimeProjectile = proj;
+            return proj;
         }
 
         private void Update()
@@ -164,6 +236,7 @@ namespace OblivionsEdge.Weapons
                 _projectilePrefab,
                 origin,
                 Quaternion.Euler(0f, 0f, angle));
+            projectile.gameObject.SetActive(true);
 
             Transform ownerRoot = GetOwnerRoot();
             Collider2D[] ownerColliders = GetOwnerColliders(ownerRoot);
