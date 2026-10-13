@@ -1074,7 +1074,7 @@
     solved:false,
     // Start scrambled so the player has to align every mirror.
     // One turn per mirror from this scrambled setup routes the beam through the receiver.
-    mirrors:[ {x:120,y:70,angle:135},{x:120,y:190,angle:90},{x:48,y:190,angle:0},{x:48,y:100,angle:90} ],
+    mirrors:[ {x:120,y:70,angle:0},{x:120,y:190,angle:90},{x:48,y:190,angle:0},{x:48,y:100,angle:90} ],
     targetX:220, targetY:100, beamProgress:0, animationFrame:null
   };
   function traceLaserPath(width,height,emitterX) {
@@ -1183,7 +1183,8 @@
   }
   function handleLaserCanvasClick(e) {
     const rect=e.target.getBoundingClientRect();
-    const cx=e.clientX-rect.left, cy=e.clientY-rect.top;
+    const cx=(e.clientX-rect.left)*e.target.width/rect.width;
+    const cy=(e.clientY-rect.top)*e.target.height/rect.height;
     laserPuzzle.mirrors.forEach(m=>{
       if (Math.hypot(m.x-cx,m.y-cy)<28) { m.angle=(m.angle+45)%180; laserPuzzle.beamProgress=0; playTone(520,'sine',0.08,0.08); renderLaserPuzzle(); }
     });
