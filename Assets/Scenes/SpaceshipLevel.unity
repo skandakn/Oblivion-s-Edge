@@ -1,0 +1,891 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!29 &1
+OcclusionCullingSettings:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_OcclusionBakeSettings:
+    smallestOccluder: 5
+    smallestHole: 0.25
+    backfaceThreshold: 100
+  m_SceneGUID: 00000000000000000000000000000000
+  m_OcclusionCullingData: {fileID: 0}
+--- !u!104 &2
+RenderSettings:
+  m_ObjectHideFlags: 0
+  serializedVersion: 9
+  m_Fog: 0
+  m_AmbientSkyColor: {r: 0.1, g: 0.12, b: 0.18, a: 1}
+  m_AmbientEquatorColor: {r: 0.08, g: 0.09, b: 0.12, a: 1}
+  m_AmbientGroundColor: {r: 0.03, g: 0.03, b: 0.04, a: 1}
+  m_AmbientIntensity: 0.6
+  m_AmbientMode: 3
+--- !u!157 &3
+LightmapSettings:
+  m_ObjectHideFlags: 0
+  serializedVersion: 12
+  m_GIWorkflowMode: 1
+--- !u!196 &4
+NavMeshSettings:
+  serializedVersion: 2
+  m_ObjectHideFlags: 0
+  m_BuildSettings:
+    serializedVersion: 3
+    agentTypeID: 0
+    agentRadius: 0.5
+    agentHeight: 2
+--- !u!1 &519420028
+GameObject:
+  m_ObjectHideFlags: 0
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 519420032}
+  - component: {fileID: 519420031}
+  - component: {fileID: 519420029}
+  m_Layer: 0
+  m_Name: Main Camera
+  m_TagString: MainCamera
+  m_IsActive: 1
+--- !u!81 &519420029
+AudioListener:
+  m_ObjectHideFlags: 0
+  m_GameObject: {fileID: 519420028}
+  m_Enabled: 1
+--- !u!20 &519420031
+Camera:
+  m_ObjectHideFlags: 0
+  m_GameObject: {fileID: 519420028}
+  m_Enabled: 1
+  m_ClearFlags: 2
+  m_BackGroundColor: {r: 0.02, g: 0.03, b: 0.05, a: 1}
+  orthographic: 1
+  orthographic size: 7
+  near clip plane: 0.3
+  far clip plane: 1000
+--- !u!4 &519420032
+Transform:
+  m_ObjectHideFlags: 0
+  m_GameObject: {fileID: 519420028}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: -30, y: 0, z: -10}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_RootOrder: 0
+--- !u!1 &100001
+GameObject:
+  m_ObjectHideFlags: 0
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 400001}
+  - component: {fileID: 11400001}
+  m_Layer: 0
+  m_Name: GameManager
+  m_TagString: GameController
+  m_IsActive: 1
+--- !u!4 &400001
+Transform:
+  m_ObjectHideFlags: 0
+  m_GameObject: {fileID: 100001}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_RootOrder: 1
+--- !u!114 &11400001
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_GameObject: {fileID: 100001}
+  m_Enabled: 1
+  m_Script: {fileID: 11500000, guid: b6cade97994cfba585b76b3e903bf104, type: 3}
+--- !u!1 &100002
+GameObject:
+  m_ObjectHideFlags: 0
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 400002}
+  m_Layer: 0
+  m_Name: PlayerSpawnPoint
+  m_TagString: Respawn
+  m_IsActive: 1
+--- !u!4 &400002
+Transform:
+  m_ObjectHideFlags: 0
+  m_GameObject: {fileID: 100002}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: -33, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_RootOrder: 2
+--- !u!1 &100003
+GameObject:
+  m_ObjectHideFlags: 0
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 400003}
+  - component: {fileID: 11400003}
+  m_Layer: 0
+  m_Name: AudioAmbienceCoordinator
+  m_TagString: Untagged
+  m_IsActive: 1
+--- !u!4 &400003
+Transform:
+  m_ObjectHideFlags: 0
+  m_GameObject: {fileID: 100003}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_RootOrder: 3
+--- !u!114 &11400003
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_GameObject: {fileID: 100003}
+  m_Enabled: 1
+  m_Script: {fileID: 11500000, guid: e1100000000000000000000000000003, type: 3}
+  _ambientHumClip: {fileID: 8300000, guid: a1100000000000000000000000000001, type: 3}
+  _attackWarningClip: {fileID: 8300000, guid: a1100000000000000000000000000002, type: 3}
+  _enableRandomMetallicSounds: 1
+  _minGroanInterval: 6
+  _maxGroanInterval: 14
+--- !u!1 &100010
+GameObject:
+  m_ObjectHideFlags: 0
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 400010}
+  - component: {fileID: 11400010}
+  m_Layer: 0
+  m_Name: Zone_1_StartingCorridor
+  m_TagString: Untagged
+  m_IsActive: 1
+--- !u!4 &400010
+Transform:
+  m_ObjectHideFlags: 0
+  m_GameObject: {fileID: 100010}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: -30, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_RootOrder: 4
+--- !u!114 &11400010
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_GameObject: {fileID: 100010}
+  m_Enabled: 1
+  m_Script: {fileID: 11500000, guid: e1100000000000000000000000000001, type: 3}
+  _zoneType: 0
+  _zoneName: Starting Corridor & Decontamination
+  _zoneSize: {x: 12, y: 5}
+--- !u!1 &100011
+GameObject:
+  m_ObjectHideFlags: 0
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 400011}
+  - component: {fileID: 21200011}
+  - component: {fileID: 5800011}
+  - component: {fileID: 8200011}
+  - component: {fileID: 11400011}
+  m_Layer: 9
+  m_Name: TeammateTransmissionConsole
+  m_TagString: Interactable
+  m_IsActive: 1
+--- !u!4 &400011
+Transform:
+  m_ObjectHideFlags: 0
+  m_GameObject: {fileID: 100011}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: -28, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_RootOrder: 5
+--- !u!212 &21200011
+SpriteRenderer:
+  m_ObjectHideFlags: 0
+  m_GameObject: {fileID: 100011}
+  m_Enabled: 1
+  m_Sprite: {fileID: 21300000, guid: s1100000000000000000000000000003, type: 3}
+--- !u!58 &5800011
+CircleCollider2D:
+  m_ObjectHideFlags: 0
+  m_GameObject: {fileID: 100011}
+  m_Enabled: 1
+  m_IsTrigger: 1
+  m_Radius: 1.5
+--- !u!82 &8200011
+AudioSource:
+  m_ObjectHideFlags: 0
+  m_GameObject: {fileID: 100011}
+  m_Enabled: 1
+  m_AudioClip: {fileID: 8300000, guid: a1100000000000000000000000000005, type: 3}
+--- !u!114 &11400011
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_GameObject: {fileID: 100011}
+  m_Enabled: 1
+  m_Script: {fileID: 11500000, guid: e1100000000000000000000000000005, type: 3}
+  _senderName: Cpl. Hayes (Forward Recon)
+  _transmissionMessage: MAYDAY! The alien breached containment and nested in Main Engineering! Find the weapon note, recover Edge and Handle fragments, extract the Core, and forge the DeathStorm!
+  _audioSource: {fileID: 8200011}
+  _staticChimeClip: {fileID: 8300000, guid: a1100000000000000000000000000005, type: 3}
+--- !u!1 &100020
+GameObject:
+  m_ObjectHideFlags: 0
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 400020}
+  - component: {fileID: 11400020}
+  m_Layer: 0
+  m_Name: Zone_2_WeaponNoteLocation
+  m_TagString: Untagged
+  m_IsActive: 1
+--- !u!4 &400020
+Transform:
+  m_ObjectHideFlags: 0
+  m_GameObject: {fileID: 100020}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: -18, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_RootOrder: 6
+--- !u!114 &11400020
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_GameObject: {fileID: 100020}
+  m_Enabled: 1
+  m_Script: {fileID: 11500000, guid: e1100000000000000000000000000001, type: 3}
+  _zoneType: 1
+  _zoneName: Research Bay & Blueprint Station
+  _zoneSize: {x: 10, y: 5}
+--- !u!1 &100021
+GameObject:
+  m_ObjectHideFlags: 0
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 400021}
+  - component: {fileID: 21200021}
+  - component: {fileID: 5800021}
+  - component: {fileID: 11400021}
+  m_Layer: 9
+  m_Name: WeaponBlueprintNoteTerminal
+  m_TagString: Interactable
+  m_IsActive: 1
+--- !u!4 &400021
+Transform:
+  m_ObjectHideFlags: 0
+  m_GameObject: {fileID: 100021}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: -18, y: 1.2, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_RootOrder: 7
+--- !u!212 &21200021
+SpriteRenderer:
+  m_ObjectHideFlags: 0
+  m_GameObject: {fileID: 100021}
+  m_Enabled: 1
+  m_Sprite: {fileID: 21300000, guid: s1100000000000000000000000000004, type: 3}
+--- !u!58 &5800021
+CircleCollider2D:
+  m_ObjectHideFlags: 0
+  m_GameObject: {fileID: 100021}
+  m_Enabled: 1
+  m_IsTrigger: 1
+  m_Radius: 1.5
+--- !u!114 &11400021
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_GameObject: {fileID: 100021}
+  m_Enabled: 1
+  m_Script: {fileID: 11500000, guid: e1100000000000000000000000000006, type: 3}
+  _documentTitle: PROJECT DEATHSTORM — SCHEMATIC OVERVIEW
+  _glowIndicator: {fileID: 21200021}
+--- !u!1 &100030
+GameObject:
+  m_ObjectHideFlags: 0
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 400030}
+  - component: {fileID: 11400030}
+  m_Layer: 0
+  m_Name: Zone_3_EdgePuzzleRoom
+  m_TagString: Untagged
+  m_IsActive: 1
+--- !u!4 &400030
+Transform:
+  m_ObjectHideFlags: 0
+  m_GameObject: {fileID: 100030}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: -8, y: 4.5, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_RootOrder: 8
+--- !u!114 &11400030
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_GameObject: {fileID: 100030}
+  m_Enabled: 1
+  m_Script: {fileID: 11500000, guid: e1100000000000000000000000000001, type: 3}
+  _zoneType: 2
+  _zoneName: Resonator Calibration Lab (Edge Puzzle)
+  _zoneSize: {x: 8, y: 6}
+--- !u!1 &100031
+GameObject:
+  m_ObjectHideFlags: 0
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 400031}
+  - component: {fileID: 21200031}
+  - component: {fileID: 5800031}
+  - component: {fileID: 11400031}
+  m_Layer: 9
+  m_Name: EdgePuzzlePedestal
+  m_TagString: Interactable
+  m_IsActive: 1
+--- !u!4 &400031
+Transform:
+  m_ObjectHideFlags: 0
+  m_GameObject: {fileID: 100031}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: -8, y: 5.5, z: 0}
+  m_LocalScale: {x: 1.2, y: 1.2, z: 1}
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_RootOrder: 9
+--- !u!212 &21200031
+SpriteRenderer:
+  m_ObjectHideFlags: 0
+  m_GameObject: {fileID: 100031}
+  m_Enabled: 1
+  m_Sprite: {fileID: 21300000, guid: s1100000000000000000000000000005, type: 3}
+--- !u!58 &5800031
+CircleCollider2D:
+  m_ObjectHideFlags: 0
+  m_GameObject: {fileID: 100031}
+  m_Enabled: 1
+  m_IsTrigger: 1
+  m_Radius: 1.6
+--- !u!114 &11400031
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_GameObject: {fileID: 100031}
+  m_Enabled: 1
+  m_Script: {fileID: 11500000, guid: e1100000000000000000000000000007, type: 3}
+  _roomType: 0
+  _componentItemId: deathstorm_edge
+  _componentDisplayName: DeathStorm Edge Fragment
+  _fragmentVisual: {fileID: 21200031}
+--- !u!1 &100040
+GameObject:
+  m_ObjectHideFlags: 0
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 400040}
+  - component: {fileID: 11400040}
+  m_Layer: 0
+  m_Name: Zone_4_HandlePuzzleRoom
+  m_TagString: Untagged
+  m_IsActive: 1
+--- !u!4 &400040
+Transform:
+  m_ObjectHideFlags: 0
+  m_GameObject: {fileID: 100040}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: -8, y: -4.5, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_RootOrder: 10
+--- !u!114 &11400040
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_GameObject: {fileID: 100040}
+  m_Enabled: 1
+  m_Script: {fileID: 11500000, guid: e1100000000000000000000000000001, type: 3}
+  _zoneType: 3
+  _zoneName: Aux Power Vault (Handle Puzzle)
+  _zoneSize: {x: 8, y: 6}
+--- !u!1 &100041
+GameObject:
+  m_ObjectHideFlags: 0
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 400041}
+  - component: {fileID: 21200041}
+  - component: {fileID: 5800041}
+  - component: {fileID: 11400041}
+  m_Layer: 9
+  m_Name: HandlePuzzlePedestal
+  m_TagString: Interactable
+  m_IsActive: 1
+--- !u!4 &400041
+Transform:
+  m_ObjectHideFlags: 0
+  m_GameObject: {fileID: 100041}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: -8, y: -5.5, z: 0}
+  m_LocalScale: {x: 1.2, y: 1.2, z: 1}
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_RootOrder: 11
+--- !u!212 &21200041
+SpriteRenderer:
+  m_ObjectHideFlags: 0
+  m_GameObject: {fileID: 100041}
+  m_Enabled: 1
+  m_Sprite: {fileID: 21300000, guid: s1100000000000000000000000000006, type: 3}
+--- !u!58 &5800041
+CircleCollider2D:
+  m_ObjectHideFlags: 0
+  m_GameObject: {fileID: 100041}
+  m_Enabled: 1
+  m_IsTrigger: 1
+  m_Radius: 1.6
+--- !u!114 &11400041
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_GameObject: {fileID: 100041}
+  m_Enabled: 1
+  m_Script: {fileID: 11500000, guid: e1100000000000000000000000000007, type: 3}
+  _roomType: 1
+  _componentItemId: deathstorm_handle
+  _componentDisplayName: DeathStorm Handle Fragment
+  _fragmentVisual: {fileID: 21200041}
+--- !u!1 &100050
+GameObject:
+  m_ObjectHideFlags: 0
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 400050}
+  - component: {fileID: 11400050}
+  m_Layer: 0
+  m_Name: Zone_5_AlienNestArena
+  m_TagString: Untagged
+  m_IsActive: 1
+--- !u!4 &400050
+Transform:
+  m_ObjectHideFlags: 0
+  m_GameObject: {fileID: 100050}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 12, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_RootOrder: 12
+--- !u!114 &11400050
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_GameObject: {fileID: 100050}
+  m_Enabled: 1
+  m_Script: {fileID: 11500000, guid: e1100000000000000000000000000001, type: 3}
+  _zoneType: 4
+  _zoneName: Alien Hive Arena & Reactor Chamber
+  _zoneSize: {x: 24, y: 14}
+--- !u!1 &100051
+GameObject:
+  m_ObjectHideFlags: 0
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 400051}
+  m_Layer: 7
+  m_Name: AlienBossSpawnPoint
+  m_TagString: Boss
+  m_IsActive: 1
+--- !u!4 &400051
+Transform:
+  m_ObjectHideFlags: 0
+  m_GameObject: {fileID: 100051}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 14, y: 0, z: 0}
+  m_LocalScale: {x: 2, y: 2, z: 1}
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_RootOrder: 13
+--- !u!1 &100060
+GameObject:
+  m_ObjectHideFlags: 0
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 400060}
+  - component: {fileID: 11400060}
+  m_Layer: 0
+  m_Name: Zone_6_CoreExtractionPoint
+  m_TagString: Untagged
+  m_IsActive: 1
+--- !u!4 &400060
+Transform:
+  m_ObjectHideFlags: 0
+  m_GameObject: {fileID: 100060}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 5, y: 3.5, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_RootOrder: 14
+--- !u!114 &11400060
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_GameObject: {fileID: 100060}
+  m_Enabled: 1
+  m_Script: {fileID: 11500000, guid: e1100000000000000000000000000001, type: 3}
+  _zoneType: 5
+  _zoneName: Void Core Nest Pedestal
+  _zoneSize: {x: 6, y: 5}
+--- !u!1 &100061
+GameObject:
+  m_ObjectHideFlags: 0
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 400061}
+  - component: {fileID: 21200061}
+  - component: {fileID: 5800061}
+  - component: {fileID: 11400061}
+  m_Layer: 9
+  m_Name: BioCoreExtractionAltar
+  m_TagString: Interactable
+  m_IsActive: 1
+--- !u!4 &400061
+Transform:
+  m_ObjectHideFlags: 0
+  m_GameObject: {fileID: 100061}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 5, y: 3.5, z: 0}
+  m_LocalScale: {x: 1.4, y: 1.4, z: 1}
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_RootOrder: 15
+--- !u!212 &21200061
+SpriteRenderer:
+  m_ObjectHideFlags: 0
+  m_GameObject: {fileID: 100061}
+  m_Enabled: 1
+  m_Sprite: {fileID: 21300000, guid: s1100000000000000000000000000007, type: 3}
+--- !u!58 &5800061
+CircleCollider2D:
+  m_ObjectHideFlags: 0
+  m_GameObject: {fileID: 100061}
+  m_Enabled: 1
+  m_IsTrigger: 1
+  m_Radius: 1.8
+--- !u!114 &11400061
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_GameObject: {fileID: 100061}
+  m_Enabled: 1
+  m_Script: {fileID: 11500000, guid: e1100000000000000000000000000008, type: 3}
+  _coreItemId: deathstorm_core
+  _extractionHoldTime: 1
+  _coreOrbVisual: {fileID: 21200061}
+--- !u!1 &100070
+GameObject:
+  m_ObjectHideFlags: 0
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 400070}
+  - component: {fileID: 11400070}
+  m_Layer: 0
+  m_Name: Zone_7_ForgeArea
+  m_TagString: Untagged
+  m_IsActive: 1
+--- !u!4 &400070
+Transform:
+  m_ObjectHideFlags: 0
+  m_GameObject: {fileID: 100070}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 19, y: -3.5, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_RootOrder: 16
+--- !u!114 &11400070
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_GameObject: {fileID: 100070}
+  m_Enabled: 1
+  m_Script: {fileID: 11500000, guid: e1100000000000000000000000000001, type: 3}
+  _zoneType: 6
+  _zoneName: DeathStorm Forge Altar
+  _zoneSize: {x: 6, y: 5}
+--- !u!1 &100071
+GameObject:
+  m_ObjectHideFlags: 0
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 400071}
+  - component: {fileID: 21200071}
+  - component: {fileID: 5800071}
+  - component: {fileID: 11400071}
+  - component: {fileID: 11400072}
+  m_Layer: 9
+  m_Name: DeathStormForgeAltar
+  m_TagString: Interactable
+  m_IsActive: 1
+--- !u!4 &400071
+Transform:
+  m_ObjectHideFlags: 0
+  m_GameObject: {fileID: 100071}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 19, y: -3.5, z: 0}
+  m_LocalScale: {x: 1.5, y: 1.5, z: 1}
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_RootOrder: 17
+--- !u!212 &21200071
+SpriteRenderer:
+  m_ObjectHideFlags: 0
+  m_GameObject: {fileID: 100071}
+  m_Enabled: 1
+  m_Sprite: {fileID: 21300000, guid: s1100000000000000000000000000008, type: 3}
+  m_Color: {r: 0.85, g: 0.45, b: 1, a: 1}
+--- !u!58 &5800071
+CircleCollider2D:
+  m_ObjectHideFlags: 0
+  m_GameObject: {fileID: 100071}
+  m_Enabled: 1
+  m_IsTrigger: 1
+  m_Radius: 2
+--- !u!114 &11400071
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_GameObject: {fileID: 100071}
+  m_Enabled: 1
+  m_Script: {fileID: 11500000, guid: e1100000000000000000000000000009, type: 3}
+  _resonanceLighting: {fileID: 11400072}
+  _anvilGlowSprite: {fileID: 21200071}
+--- !u!114 &11400072
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_GameObject: {fileID: 100071}
+  m_Enabled: 1
+  m_Script: {fileID: 11500000, guid: e1100000000000000000000000000002, type: 3}
+  _glowSprite: {fileID: 21200071}
+  _activeMode: 2
+  _pulseFrequency: 1.8
+  _minIntensity: 0.5
+  _maxIntensity: 1.8
+--- !u!1 &100080
+GameObject:
+  m_ObjectHideFlags: 0
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 400080}
+  - component: {fileID: 21200080}
+  - component: {fileID: 6100080}
+  - component: {fileID: 11400080}
+  m_Layer: 8
+  m_Name: CoverCrate_Corridor
+  m_TagString: Untagged
+  m_IsActive: 1
+--- !u!4 &400080
+Transform:
+  m_ObjectHideFlags: 0
+  m_GameObject: {fileID: 100080}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: -22, y: -1.2, z: 0}
+  m_LocalScale: {x: 1.5, y: 1.5, z: 1}
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_RootOrder: 18
+--- !u!212 &21200080
+SpriteRenderer:
+  m_ObjectHideFlags: 0
+  m_GameObject: {fileID: 100080}
+  m_Enabled: 1
+  m_Sprite: {fileID: 21300000, guid: s1100000000000000000000000000002, type: 3}
+--- !u!61 &6100080
+BoxCollider2D:
+  m_ObjectHideFlags: 0
+  m_GameObject: {fileID: 100080}
+  m_Enabled: 1
+  m_IsTrigger: 0
+  m_Size: {x: 1.2, y: 1.2}
+--- !u!114 &11400080
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_GameObject: {fileID: 100080}
+  m_Enabled: 1
+  m_Script: {fileID: 11500000, guid: e1100000000000000000000000000004, type: 3}
+  _coverId: CorridorCrate_01
+  _providesStealth: 1
+  _physicalCollider: {fileID: 6100080}
+--- !u!1 &100081
+GameObject:
+  m_ObjectHideFlags: 0
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 400081}
+  - component: {fileID: 21200081}
+  - component: {fileID: 6100081}
+  - component: {fileID: 11400081}
+  m_Layer: 8
+  m_Name: CoverCrate_Arena_North
+  m_TagString: Untagged
+  m_IsActive: 1
+--- !u!4 &400081
+Transform:
+  m_ObjectHideFlags: 0
+  m_GameObject: {fileID: 100081}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 10, y: 2.5, z: 0}
+  m_LocalScale: {x: 1.8, y: 1.8, z: 1}
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_RootOrder: 19
+--- !u!212 &21200081
+SpriteRenderer:
+  m_ObjectHideFlags: 0
+  m_GameObject: {fileID: 100081}
+  m_Enabled: 1
+  m_Sprite: {fileID: 21300000, guid: s1100000000000000000000000000002, type: 3}
+--- !u!61 &6100081
+BoxCollider2D:
+  m_ObjectHideFlags: 0
+  m_GameObject: {fileID: 100081}
+  m_Enabled: 1
+  m_IsTrigger: 0
+  m_Size: {x: 1.2, y: 1.2}
+--- !u!114 &11400081
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_GameObject: {fileID: 100081}
+  m_Enabled: 1
+  m_Script: {fileID: 11500000, guid: e1100000000000000000000000000004, type: 3}
+  _coverId: ArenaPillar_North
+  _providesStealth: 1
+  _physicalCollider: {fileID: 6100081}
+--- !u!1 &100082
+GameObject:
+  m_ObjectHideFlags: 0
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 400082}
+  - component: {fileID: 21200082}
+  - component: {fileID: 6100082}
+  - component: {fileID: 11400082}
+  m_Layer: 8
+  m_Name: CoverCrate_Arena_South
+  m_TagString: Untagged
+  m_IsActive: 1
+--- !u!4 &400082
+Transform:
+  m_ObjectHideFlags: 0
+  m_GameObject: {fileID: 100082}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 14, y: -2.5, z: 0}
+  m_LocalScale: {x: 1.8, y: 1.8, z: 1}
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_RootOrder: 20
+--- !u!212 &21200082
+SpriteRenderer:
+  m_ObjectHideFlags: 0
+  m_GameObject: {fileID: 100082}
+  m_Enabled: 1
+  m_Sprite: {fileID: 21300000, guid: s1100000000000000000000000000002, type: 3}
+--- !u!61 &6100082
+BoxCollider2D:
+  m_ObjectHideFlags: 0
+  m_GameObject: {fileID: 100082}
+  m_Enabled: 1
+  m_IsTrigger: 0
+  m_Size: {x: 1.2, y: 1.2}
+--- !u!114 &11400082
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_GameObject: {fileID: 100082}
+  m_Enabled: 1
+  m_Script: {fileID: 11500000, guid: e1100000000000000000000000000004, type: 3}
+  _coverId: ArenaPillar_South
+  _providesStealth: 1
+  _physicalCollider: {fileID: 6100082}
+--- !u!1 &100090
+GameObject:
+  m_ObjectHideFlags: 0
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 400090}
+  - component: {fileID: 10800090}
+  - component: {fileID: 11400090}
+  m_Layer: 0
+  m_Name: EmergencyRedLight_Arena
+  m_TagString: Untagged
+  m_IsActive: 1
+--- !u!4 &400090
+Transform:
+  m_ObjectHideFlags: 0
+  m_GameObject: {fileID: 100090}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 12, y: 5, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_RootOrder: 21
+--- !u!108 &10800090
+Light:
+  m_ObjectHideFlags: 0
+  m_GameObject: {fileID: 100090}
+  m_Enabled: 1
+  serializedVersion: 10
+  m_Type: 2
+  m_Color: {r: 1, g: 0.1, b: 0.05, a: 1}
+  m_Intensity: 1.4
+  m_Range: 12
+--- !u!114 &11400090
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_GameObject: {fileID: 100090}
+  m_Enabled: 1
+  m_Script: {fileID: 11500000, guid: e1100000000000000000000000000002, type: 3}
+  _targetLight: {fileID: 10800090}
+  _activeMode: 1
+  _pulseFrequency: 2.5
+--- !u!1 &100100
+GameObject:
+  m_ObjectHideFlags: 0
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 4000100}
+  - component: {fileID: 11400100}
+  m_Layer: 0
+  m_Name: LevelRouteValidator
+  m_TagString: Untagged
+  m_IsActive: 1
+--- !u!4 &4000100
+Transform:
+  m_ObjectHideFlags: 0
+  m_GameObject: {fileID: 100100}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_RootOrder: 22
+--- !u!114 &11400100
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_GameObject: {fileID: 100100}
+  m_Enabled: 1
+  m_Script: {fileID: 11500000, guid: e110000000000000000000000000000a, type: 3}
+  _startingCorridorZone: {fileID: 11400010}
+  _weaponNoteZone: {fileID: 11400020}
+  _edgePuzzleZone: {fileID: 11400030}
+  _handlePuzzleZone: {fileID: 11400040}
+  _alienNestZone: {fileID: 11400050}
+  _coreExtractionZone: {fileID: 11400060}
+  _forgeAreaZone: {fileID: 11400070}
+  _bossSpawnPoint: {fileID: 400051}
+  _coreExtractionPoint: {fileID: 400061}
+  _forgePoint: {fileID: 400071}
+  _coverObjects:
+  - {fileID: 11400080}
+  - {fileID: 11400081}
+  - {fileID: 11400082}

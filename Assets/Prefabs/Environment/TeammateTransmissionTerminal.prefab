@@ -1,0 +1,59 @@
+﻿%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!1 &100000
+GameObject:
+  m_ObjectHideFlags: 0
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 400000}
+  - component: {fileID: 21200000}
+  - component: {fileID: 5800000}
+  - component: {fileID: 8200000}
+  - component: {fileID: 11400000}
+  m_Layer: 9
+  m_Name: TeammateTransmissionTerminal
+  m_TagString: Interactable
+  m_IsActive: 1
+--- !u!4 &400000
+Transform:
+  m_ObjectHideFlags: 0
+  m_GameObject: {fileID: 100000}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_RootOrder: 0
+--- !u!212 &21200000
+SpriteRenderer:
+  m_ObjectHideFlags: 0
+  m_GameObject: {fileID: 100000}
+  m_Enabled: 1
+  m_Sprite: {fileID: 21300000, guid: s1100000000000000000000000000003, type: 3}
+  m_Color: {r: 1, g: 1, b: 1, a: 1}
+--- !u!58 &5800000
+CircleCollider2D:
+  m_ObjectHideFlags: 0
+  m_GameObject: {fileID: 100000}
+  m_Enabled: 1
+  m_IsTrigger: 1
+  m_Radius: 1.5
+--- !u!82 &8200000
+AudioSource:
+  m_ObjectHideFlags: 0
+  m_GameObject: {fileID: 100000}
+  m_Enabled: 1
+  m_AudioClip: {fileID: 8300000, guid: a1100000000000000000000000000005, type: 3}
+  m_PlayOnAwake: 0
+  m_Volume: 0.8
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_GameObject: {fileID: 100000}
+  m_Enabled: 1
+  m_Script: {fileID: 11500000, guid: e1100000000000000000000000000005, type: 3}
+  _senderName: Cpl. Hayes (Forward Recon)
+  _transmissionMessage: MAYDAY! The specimen breached containment and made its nest in the reactor hub! Recover the Edge and Handle fragments, extract the Core, and forge the DeathStorm!
+  _audioSource: {fileID: 8200000}
+  _staticChimeClip: {fileID: 8300000, guid: a1100000000000000000000000000005, type: 3}
+  _autoPlayOnTrigger: 1
