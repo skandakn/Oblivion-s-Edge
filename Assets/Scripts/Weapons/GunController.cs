@@ -28,10 +28,10 @@ namespace OblivionsEdge.Weapons
         [SerializeField, Min(0f)] private float _knockbackForce;
 
         [Header("Ammunition")]
-        [SerializeField, Min(1)] private int _magazineCapacity = 12;
-        [SerializeField, Min(0)] private int _startingMagazineAmmo = 12;
-        [SerializeField, Min(0)] private int _startingReserveAmmo = 48;
-        [SerializeField, Min(0)] private int _maxReserveAmmo = 120;
+        [SerializeField, Min(1)] private int _magazineCapacity = 24;
+        [SerializeField, Min(0)] private int _startingMagazineAmmo = 24;
+        [SerializeField, Min(0)] private int _startingReserveAmmo = 96;
+        [SerializeField, Min(0)] private int _maxReserveAmmo = 240;
         [SerializeField, Min(0f)] private float _reloadDuration = 1.25f;
 
         [Header("Input")]
@@ -194,7 +194,12 @@ namespace OblivionsEdge.Weapons
 
             if (_currentAmmo <= 0)
             {
-                if (!_dryFireReportedForInput)
+                if (!_isReloading && _reserveAmmo > 0)
+                {
+                    StartReload();
+                }
+
+                if (!_isReloading && !_dryFireReportedForInput)
                 {
                     OnDryFire?.Invoke();
                     _dryFireReportedForInput = true;
@@ -255,6 +260,13 @@ namespace OblivionsEdge.Weapons
             PlayMuzzleFlash(angle);
             OnAmmoChanged?.Invoke(_currentAmmo, _magazineCapacity);
             OnFired?.Invoke();
+
+            // Automatically reload after the last round; StartReload preserves the manual R path.
+            if (_currentAmmo == 0)
+            {
+                StartReload();
+            }
+
             return true;
         }
 

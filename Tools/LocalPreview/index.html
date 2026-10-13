@@ -525,6 +525,9 @@
       scrap: 45,
       camera: { x: 0, y: 0 },
       shake: 0,
+      isGameOver: false,
+      respawnInvulnerabilityFrames: 0,
+      respawnCheckpoint: { x: 120, y: 440 },
       player: {
         x: 160,
         y: 440,
@@ -533,7 +536,8 @@
         width: 24,
         height: 48,
         speed: 5.2,
-        jumpForce: 13.5,
+        // Higher clearance lets the player reach the elevated catwalks and roofs.
+        jumpForce: 16.5,
         isGrounded: false,
         dashTimer: 0,
         dashCooldown: 0,
@@ -547,6 +551,19 @@
         empCharges: 1,
         facingRight: true,
         afterimages: []
+      },
+      animal: {
+        x: 60,
+        y: 460,
+        vx: 0,
+        vy: 0,
+        w: 52, // enlarged cyber-hound quadruped body
+        h: 32,
+        hp: 250,
+        maxHp: 250,
+        isPouncing: false,
+        facingRight: true,
+        lastAttack: 0
       },
       companionDrone: {
         active: false,
@@ -615,6 +632,9 @@
     // --- LEVEL DEFINITIONS ---
     function initLevel(lvlNum) {
       state.currentLevel = lvlNum;
+      state.isGameOver = false;
+      state.respawnInvulnerabilityFrames = 0;
+      state.respawnCheckpoint = { x: 120, y: 440 };
       state.bullets = [];
       state.particles = [];
       state.pickups = [];
@@ -814,6 +834,7 @@
           { x: 2560, y: 0, w: 40, h: 600 },
           { x: 400, y: 220, w: 460, h: 20, label: "Forge Roof" },
           { x: 920, y: 360, w: 200, h: 18 },
+          { x: 1120, y: 290, w: 130, h: 18 },
           { x: 1250, y: 160, w: 900, h: 20, label: "Citadel Spires" },
           { x: 1450, y: 350, w: 220, h: 18 },
           { x: 1800, y: 350, w: 220, h: 18 }
@@ -1082,6 +1103,7 @@
     const mouse = { x: width / 2, y: height / 2, down: false };
 
     window.addEventListener('keydown', e => {
+      if (state.isGameOver) return;
       initAudio();
       const k = e.key.toLowerCase();
       keys[k] = true;
@@ -1102,6 +1124,7 @@
     window.addEventListener('keyup', e => { keys[e.key.toLowerCase()] = false; });
     window.addEventListener('mousemove', e => { mouse.x = e.clientX; mouse.y = e.clientY; });
     window.addEventListener('mousedown', e => {
+      if (state.isGameOver) return;
       initAudio();
       if (e.button === 0) mouse.down = true;
     });
@@ -1109,6 +1132,7 @@
 
     // --- GAME CLOCK ---
     setInterval(() => {
+      if (state.isGameOver) return;
       state.secondsElapsed++;
       const m = String(Math.floor(state.secondsElapsed / 60)).padStart(2, '0');
       const s = String(state.secondsElapsed % 60).padStart(2, '0');
@@ -1462,6 +1486,16 @@
           life: 75
         });
       }
+
+      // Start reloading as soon as the final round is fired; R still reloads early.
+      if (!w.melee && w.clip === 0) {
+        if (w.reserve > 0) {
+          reloadWeapon();
+        } else {
+          document.getElementById('reloadText').textContent = "NO AMMO IN RESERVE";
+          document.getElementById('reloadText').className = "text-[11px] font-semibold text-red-400 tracking-wider h-4";
+        }
+      }
     }
 
     function checkMeleeHit(px, py, angle, dmg) {
@@ -1537,19 +1571,63 @@
     }
 
     function respawnPlayer() {
+      const p = state.player;
+      const checkpoint = state.respawnCheckpoint;
+      state.isGameOver = false;
       document.getElementById('modalGameOver').classList.add('hidden');
-      state.player.hp = state.player.maxHp;
-      state.player.shield = state.player.maxShield;
-      state.player.x = 120;
-      state.player.y = 440;
-      state.player.vx = 0;
-      state.player.vy = 0;
+      p.hp = p.maxHp;
+      p.shield = p.maxShield;
+      p.x = checkpoint.x;
+      p.y = checkpoint.y;
+      p.vx = 0;
+      p.vy = 0;
+      p.isGrounded = false;
+      p.isDashing = false;
+      p.dashTimer = 0;
+      p.afterimages = [];
+      state.bullets = [];
+      state.shake = 0;
+      state.respawnInvulnerabilityFrames = 120;
+      state.camera.x = p.x + p.width / 2 - width / 2;
+      state.camera.y = p.y + p.height / 2 - height / 2;
+      for (const key in keys) keys[key] = false;
+      mouse.down = false;
+
+      // Reset an unfinished Sector 3 encounter so the Archon cannot chase the player
+      // all the way back to the checkpoint after repeated deaths.
+      if (state.currentLevel === 3 && !state.boss.defeated) {
+        const boss = state.boss;
+        boss.x = 1900;
+        boss.y = 440;
+        boss.vx = 0;
+        boss.vy = 0;
+        boss.armor = boss.maxArmor;
+        boss.hp = boss.maxHp;
+        boss.phase = state.craftingActive && state.craftingCountdown <= 0 ? 4 : 1;
+        boss.staggerTimer = 0;
+        boss.attackTimer = 0;
+        boss.active = false;
+
+        const bossHud = document.getElementById('bossHud');
+        bossHud.style.opacity = '0';
+        bossHud.classList.add('-translate-y-4');
+        document.getElementById('bossArmorBar').style.width = '100%';
+        document.getElementById('bossHpBar').style.width = '100%';
+        document.getElementById('bossHpText').textContent = '100%';
+        document.getElementById('bossPhaseBadge').textContent = boss.phase === 4 ? 'VOID ENRAGED' : 'PHASE 1';
+      }
+
       updateVitalsUI();
+      showNotification("REBOOT COMPLETE — TEMPORARY SHIELD ACTIVE");
     }
 
     // --- MAIN PHYSICS & SIMULATION ---
     function updatePhysics() {
       const p = state.player;
+
+      if (state.respawnInvulnerabilityFrames > 0) {
+        state.respawnInvulnerabilityFrames--;
+      }
 
       // Screen shake decay
       if (state.shake > 0) state.shake *= 0.9;
@@ -1815,6 +1893,7 @@
 
       // Boss activation in Level 3
       if (state.currentLevel === 3 && p.x > 1500 && !state.boss.active && !state.boss.defeated) {
+        state.respawnCheckpoint = { x: 1400, y: 440 };
         state.boss.active = true;
         document.getElementById('bossHud').style.opacity = '1';
         document.getElementById('bossHud').classList.remove('-translate-y-4');
@@ -1849,6 +1928,45 @@
         document.getElementById('bossPhaseBadge').textContent = b.phase === 4 ? 'VOID ENRAGED' : (b.phase === 3 ? 'CORE EXPOSED' : `PHASE ${b.phase}`);
       }
 
+      // Animal Companion Physics & Combat AI
+      const a = state.animal;
+      a.vy += 0.42;
+      a.x += a.vx;
+      a.y += a.vy;
+
+      for (let plat of state.platforms) {
+        if (a.x + a.w > plat.x && a.x < plat.x + plat.w &&
+            a.y + a.h >= plat.y && a.y + a.h <= plat.y + 20 && a.vy >= 0) {
+          a.y = plat.y - a.h;
+          a.vy = 0;
+        }
+      }
+
+      const followTargetX = p.x + (p.facingRight ? -50 : 50);
+      const distToPlayer = Math.abs(followTargetX - a.x);
+      if (distToPlayer > 40 && !a.isPouncing) {
+        const dir = Math.sign(followTargetX - a.x);
+        a.vx = dir * 4.2;
+        a.facingRight = dir > 0;
+        if (p.y + p.height < a.y && a.vy === 0) a.vy = -9;
+      } else if (!a.isPouncing) {
+        a.vx *= 0.75;
+      }
+
+      const nowAnim = performance.now();
+      for (let drone of state.drones) {
+        if (Math.hypot(drone.x - a.x, drone.y - a.y) < 130 && nowAnim - a.lastAttack > 1300) {
+          a.lastAttack = nowAnim;
+          a.isPouncing = true;
+          a.vx = Math.sign(drone.x - a.x) * 9.5;
+          a.vy = -4.5;
+          drone.hp -= 40;
+          sfxHit();
+          setTimeout(() => { a.isPouncing = false; }, 420);
+          break;
+        }
+      }
+
       // Camera Follow with screen shake
       const shakeX = (Math.random() - 0.5) * state.shake;
       const shakeY = (Math.random() - 0.5) * state.shake;
@@ -1862,7 +1980,7 @@
 
     function damagePlayer(amount) {
       const p = state.player;
-      if (p.isDashing) return;
+      if (state.isGameOver || state.respawnInvulnerabilityFrames > 0 || p.isDashing) return;
 
       if (p.shield > 0) {
         p.shield -= amount;
@@ -1879,6 +1997,9 @@
       updateVitalsUI();
 
       if (p.hp <= 0) {
+        state.isGameOver = true;
+        mouse.down = false;
+        for (const key in keys) keys[key] = false;
         document.getElementById('modalGameOver').classList.remove('hidden');
       }
     }
@@ -2158,6 +2279,50 @@
       ctx.lineTo(px + p.width/2 + Math.cos(aimAngle) * 22, py + p.height/2 + Math.sin(aimAngle) * 22);
       ctx.stroke();
 
+      // 7b. Animal Companion Character (Bigger Quadruped Cyber Beast)
+      const an = state.animal;
+      const ax = an.x - camX;
+      const ay = an.y - camY;
+
+      ctx.save();
+      // Main Quadruped Body (Enlarged width: 52, height: 32)
+      ctx.fillStyle = '#0f172a';
+      ctx.fillRect(ax, ay + 6, an.w, an.h - 6);
+
+      // Armored Spine Plates & Highlights
+      ctx.fillStyle = '#38bdf8';
+      ctx.fillRect(ax + 8, ay + 2, an.w - 16, 6);
+      ctx.fillStyle = '#f59e0b'; // Power Core
+      ctx.fillRect(ax + an.w / 2 - 4, ay + 10, 8, 8);
+
+      // Cyber Snout & Cyan Eye Visor
+      const snoutX = an.facingRight ? ax + an.w - 6 : ax - 6;
+      ctx.fillStyle = '#1e293b';
+      ctx.fillRect(snoutX, ay + 8, 12, 10);
+      ctx.fillStyle = '#00f5ff';
+      ctx.fillRect(an.facingRight ? ax + an.w - 2 : ax - 4, ay + 9, 6, 4);
+
+      // Paws / Legs
+      ctx.fillStyle = '#020617';
+      ctx.fillRect(ax + 4, ay + an.h - 6, 8, 8);
+      ctx.fillRect(ax + an.w - 12, ay + an.h - 6, 8, 8);
+
+      // Metallic Cyber Tail
+      ctx.strokeStyle = '#0284c7';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      const tailBaseX = an.facingRight ? ax + 2 : ax + an.w - 2;
+      ctx.moveTo(tailBaseX, ay + 8);
+      ctx.lineTo(tailBaseX + (an.facingRight ? -14 : 14), ay - 6);
+      ctx.stroke();
+
+      // HP Bar above Beast
+      ctx.fillStyle = '#000';
+      ctx.fillRect(ax + 4, ay - 14, an.w - 8, 4);
+      ctx.fillStyle = '#00f5ff';
+      ctx.fillRect(ax + 4, ay - 14, (an.hp / an.maxHp) * (an.w - 8), 4);
+      ctx.restore();
+
       // 11. Bullets & Projectiles
       for (let bullet of state.bullets) {
         ctx.fillStyle = bullet.color;
@@ -2201,7 +2366,7 @@
 
     // --- MAIN ANIMATION LOOP ---
     function loop() {
-      updatePhysics();
+      if (!state.isGameOver) updatePhysics();
       render();
       requestAnimationFrame(loop);
     }
