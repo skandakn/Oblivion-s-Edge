@@ -1464,6 +1464,16 @@
           life: 75
         });
       }
+
+      // Start reloading as soon as the final round is fired; R still reloads early.
+      if (!w.melee && w.clip === 0) {
+        if (w.reserve > 0) {
+          reloadWeapon();
+        } else {
+          document.getElementById('reloadText').textContent = "NO AMMO IN RESERVE";
+          document.getElementById('reloadText').className = "text-[11px] font-semibold text-red-400 tracking-wider h-4";
+        }
+      }
     }
 
     function checkMeleeHit(px, py, angle, dmg) {
