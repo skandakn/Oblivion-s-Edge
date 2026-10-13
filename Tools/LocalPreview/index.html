@@ -506,6 +506,19 @@
         facingRight: true,
         afterimages: []
       },
+      animal: {
+        x: 60,
+        y: 460,
+        vx: 0,
+        vy: 0,
+        w: 52, // enlarged cyber-hound quadruped body
+        h: 32,
+        hp: 250,
+        maxHp: 250,
+        isPouncing: false,
+        facingRight: true,
+        lastAttack: 0
+      },
       weapons: [
         { name: "PULSE PISTOL [MK-I]", clip: 12, maxClip: 12, reserve: 60, fireRate: 160, lastFired: 0, damage: 18, speed: 18, color: '#38bdf8' },
         { name: "PLASMA SCATTERGUN", clip: 6, maxClip: 6, reserve: 36, fireRate: 600, lastFired: 0, damage: 12, speed: 14, count: 5, spread: 0.28, color: '#f59e0b' },
@@ -1221,6 +1234,45 @@
         document.getElementById('bossPhaseBadge').textContent = b.phase === 4 ? 'VOID ENRAGED' : (b.phase === 3 ? 'CORE EXPOSED' : `PHASE ${b.phase}`);
       }
 
+      // Animal Companion Physics & Combat AI
+      const a = state.animal;
+      a.vy += 0.42;
+      a.x += a.vx;
+      a.y += a.vy;
+
+      for (let plat of state.platforms) {
+        if (a.x + a.w > plat.x && a.x < plat.x + plat.w &&
+            a.y + a.h >= plat.y && a.y + a.h <= plat.y + 20 && a.vy >= 0) {
+          a.y = plat.y - a.h;
+          a.vy = 0;
+        }
+      }
+
+      const followTargetX = p.x + (p.facingRight ? -50 : 50);
+      const distToPlayer = Math.abs(followTargetX - a.x);
+      if (distToPlayer > 40 && !a.isPouncing) {
+        const dir = Math.sign(followTargetX - a.x);
+        a.vx = dir * 4.2;
+        a.facingRight = dir > 0;
+        if (p.y + p.height < a.y && a.vy === 0) a.vy = -9;
+      } else if (!a.isPouncing) {
+        a.vx *= 0.75;
+      }
+
+      const nowAnim = performance.now();
+      for (let drone of state.drones) {
+        if (Math.hypot(drone.x - a.x, drone.y - a.y) < 130 && nowAnim - a.lastAttack > 1300) {
+          a.lastAttack = nowAnim;
+          a.isPouncing = true;
+          a.vx = Math.sign(drone.x - a.x) * 9.5;
+          a.vy = -4.5;
+          drone.hp -= 40;
+          sfxHit();
+          setTimeout(() => { a.isPouncing = false; }, 420);
+          break;
+        }
+      }
+
       // Smooth Camera Follow
       const targetCamX = p.x + p.width/2 - width / 2;
       const targetCamY = p.y + p.height/2 - height / 2;
@@ -1412,6 +1464,50 @@
       ctx.moveTo(px + p.width/2, py + p.height/2);
       ctx.lineTo(px + p.width/2 + Math.cos(aimAngle) * 22, py + p.height/2 + Math.sin(aimAngle) * 22);
       ctx.stroke();
+
+      // 7b. Animal Companion Character (Bigger Quadruped Cyber Beast)
+      const an = state.animal;
+      const ax = an.x - camX;
+      const ay = an.y - camY;
+
+      ctx.save();
+      // Main Quadruped Body (Enlarged width: 52, height: 32)
+      ctx.fillStyle = '#0f172a';
+      ctx.fillRect(ax, ay + 6, an.w, an.h - 6);
+
+      // Armored Spine Plates & Highlights
+      ctx.fillStyle = '#38bdf8';
+      ctx.fillRect(ax + 8, ay + 2, an.w - 16, 6);
+      ctx.fillStyle = '#f59e0b'; // Power Core
+      ctx.fillRect(ax + an.w / 2 - 4, ay + 10, 8, 8);
+
+      // Cyber Snout & Cyan Eye Visor
+      const snoutX = an.facingRight ? ax + an.w - 6 : ax - 6;
+      ctx.fillStyle = '#1e293b';
+      ctx.fillRect(snoutX, ay + 8, 12, 10);
+      ctx.fillStyle = '#00f5ff';
+      ctx.fillRect(an.facingRight ? ax + an.w - 2 : ax - 4, ay + 9, 6, 4);
+
+      // Paws / Legs
+      ctx.fillStyle = '#020617';
+      ctx.fillRect(ax + 4, ay + an.h - 6, 8, 8);
+      ctx.fillRect(ax + an.w - 12, ay + an.h - 6, 8, 8);
+
+      // Metallic Cyber Tail
+      ctx.strokeStyle = '#0284c7';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      const tailBaseX = an.facingRight ? ax + 2 : ax + an.w - 2;
+      ctx.moveTo(tailBaseX, ay + 8);
+      ctx.lineTo(tailBaseX + (an.facingRight ? -14 : 14), ay - 6);
+      ctx.stroke();
+
+      // HP Bar above Beast
+      ctx.fillStyle = '#000';
+      ctx.fillRect(ax + 4, ay - 14, an.w - 8, 4);
+      ctx.fillStyle = '#00f5ff';
+      ctx.fillRect(ax + 4, ay - 14, (an.hp / an.maxHp) * (an.w - 8), 4);
+      ctx.restore();
 
       // 8. Bullets & Tracers
       for (let bullet of state.bullets) {
