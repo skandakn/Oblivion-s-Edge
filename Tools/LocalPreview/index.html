@@ -1152,13 +1152,61 @@
     const laserPuzzle = {
       solved: false,
       mirrors: [
-        { x: 120, y: 70, angle: 0 },
-        { x: 340, y: 70, angle: 90 },
-        { x: 340, y: 190, angle: 180 },
-        { x: 220, y: 190, angle: 270 }
+        { x: 120, y: 70, angle: 135 },
+        { x: 120, y: 190, angle: 90 },
+        { x: 48, y: 190, angle: 0 },
+        { x: 48, y: 100, angle: 90 }
       ],
       targetX: 220, targetY: 100, beamProgress: 0, animationFrame: null
     };
+
+    function traceLaserPath(width, height, emitterX) {
+      const points = [{ x: emitterX, y: 70 }];
+      let origin = { x: emitterX, y: 70 }, direction = { x: 1, y: 0 }, hitTarget = false;
+      const cross = (a, b) => a.x * b.y - a.y * b.x;
+      for (let bounce = 0; bounce < 8; bounce++) {
+        let nearest = Infinity, hitMirror = null, hitPoint = null;
+        for (const mirror of laserPuzzle.mirrors) {
+          const radians = mirror.angle * Math.PI / 180;
+          const tangent = { x: Math.cos(radians), y: Math.sin(radians) };
+          const half = { x: tangent.x * 16, y: tangent.y * 16 };
+          const segment = { x: half.x * 2, y: half.y * 2 };
+          const offset = { x: mirror.x - half.x - origin.x, y: mirror.y - half.y - origin.y };
+          const denominator = cross(direction, segment);
+          if (Math.abs(denominator) < 1e-8) continue;
+          const distance = cross(offset, segment) / denominator;
+          const along = cross(offset, direction) / denominator;
+          if (distance > 1 && along >= 0 && along <= 1 && distance < nearest) {
+            nearest = distance; hitMirror = mirror;
+            hitPoint = { x: origin.x + direction.x * distance, y: origin.y + direction.y * distance };
+          }
+        }
+        const targetOffset = { x: laserPuzzle.targetX - origin.x, y: laserPuzzle.targetY - origin.y };
+        const targetDistance = targetOffset.x * direction.x + targetOffset.y * direction.y;
+        const targetSide = Math.abs(cross(targetOffset, direction));
+        if (targetDistance > 1 && targetDistance < nearest && targetSide <= 12) {
+          points.push({ x: laserPuzzle.targetX, y: laserPuzzle.targetY });
+          hitTarget = true; break;
+        }
+        if (!hitMirror) {
+          const distances = [];
+          if (direction.x > 1e-8) distances.push((width - origin.x) / direction.x);
+          if (direction.x < -1e-8) distances.push((0 - origin.x) / direction.x);
+          if (direction.y > 1e-8) distances.push((height - origin.y) / direction.y);
+          if (direction.y < -1e-8) distances.push((0 - origin.y) / direction.y);
+          const distance = Math.min(...distances.filter(value => value > 1));
+          points.push({ x: origin.x + direction.x * distance, y: origin.y + direction.y * distance });
+          break;
+        }
+        points.push(hitPoint);
+        const radians = hitMirror.angle * Math.PI / 180;
+        const tangent = { x: Math.cos(radians), y: Math.sin(radians) };
+        const projection = direction.x * tangent.x + direction.y * tangent.y;
+        direction = { x: 2 * projection * tangent.x - direction.x, y: 2 * projection * tangent.y - direction.y };
+        origin = { x: hitPoint.x + direction.x * 0.5, y: hitPoint.y + direction.y * 0.5 };
+      }
+      return { points, hitTarget };
+    }
 
     function renderLaserPuzzle() {
       const cv = document.getElementById('laserCanvas');
@@ -1197,17 +1245,7 @@
         c.fill();
       });
 
-      const solution = [45, 135, 225, 315];
-      const route = [{ x: 54, y: 70 }];
-      let alignedMirrors = 0;
-      for (let i = 0; i < laserPuzzle.mirrors.length; i++) {
-        const m = laserPuzzle.mirrors[i];
-        route.push({ x: m.x, y: m.y });
-        if (m.angle % 360 !== solution[i]) break;
-        alignedMirrors++;
-      }
-      const isConnected = alignedMirrors === laserPuzzle.mirrors.length;
-      if (isConnected) route.push({ x: laserPuzzle.targetX, y: laserPuzzle.targetY });
+      const { points: route, hitTarget } = traceLaserPath(cv.width, cv.height, 54);
       const routeLength = route.slice(1).reduce((sum, p, i) => sum + Math.hypot(p.x - route[i].x, p.y - route[i].y), 0);
       let remaining = Math.min(laserPuzzle.beamProgress, routeLength);
       c.strokeStyle = '#22d3ee'; c.lineWidth = 2; c.beginPath(); c.moveTo(route[0].x, route[0].y);
@@ -1221,7 +1259,7 @@
         laserPuzzle.beamProgress = Math.min(routeLength, laserPuzzle.beamProgress + 3);
         if (laserPuzzle.animationFrame === null) laserPuzzle.animationFrame = requestAnimationFrame(() => { laserPuzzle.animationFrame = null; renderLaserPuzzle(); });
       }
-      if (isConnected && laserPuzzle.beamProgress >= routeLength && !laserPuzzle.solved) {
+      if (hitTarget && laserPuzzle.beamProgress >= routeLength && !laserPuzzle.solved) {
         laserPuzzle.solved = true;
         document.getElementById('laserStatus').textContent = 'CIRCUIT COMPLETE // RECEPTOR CHARGED';
         document.getElementById('laserStatus').className = 'text-emerald-400 font-bold';
@@ -1237,7 +1275,7 @@
 
       laserPuzzle.mirrors.forEach(m => {
         if (Math.hypot(m.x - clickX, m.y - clickY) < 25) {
-          m.angle = (m.angle + 45) % 360;
+          m.angle = (m.angle + 45) % 180;
           laserPuzzle.beamProgress = 0;
           playTone(520, 'sine', 0.08, 0.08);
           renderLaserPuzzle();
