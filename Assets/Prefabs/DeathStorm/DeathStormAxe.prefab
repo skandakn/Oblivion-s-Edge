@@ -32,7 +32,7 @@ CircleCollider2D:
 --- !u!114 &11400001
 MonoBehaviour:
   m_ObjectHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 00000000000000000000000000000002, type: 3}
+  m_Script: {fileID: 11500000, guid: 95e9f54854ee4d2caa403919d2998a16, type: 3}
   m_Name: AxeCombat
   m_EditorHideFlags: 0
   m_Enabled: 1
