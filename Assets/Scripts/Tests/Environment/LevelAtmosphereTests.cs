@@ -29,7 +29,6 @@ namespace OblivionsEdge.Tests.Environment
         [Test]
         public void TC01_SevenZonesDefinitionAndConnectivity()
         {
-            // Verify that all 7 spaceship zones can be constructed and identified
             var zoneTypes = new List<SpaceshipZoneType>
             {
                 SpaceshipZoneType.StartingCorridor,
@@ -48,7 +47,6 @@ namespace OblivionsEdge.Tests.Environment
                 go.transform.SetParent(_testRoot.transform);
                 var zone = go.AddComponent<SpaceshipZone>();
 
-                // Configure via reflection
                 SetField(zone, "_zoneType", zoneTypes[i]);
                 SetField(zone, "_zoneName", zoneTypes[i].ToString());
                 SetField(zone, "_zoneSize", new Vector2(10f, 6f));
@@ -66,14 +64,13 @@ namespace OblivionsEdge.Tests.Environment
         [Test]
         public void TC02_CoverObstaclesAndRigidbodyCollision()
         {
-            // Test cover object physical blocking and stealth line-of-sight occlusion
             var coverGo = new GameObject("Cover_Bulkhead");
             coverGo.layer = GameConstants.LayerEnvironmentIndex; // Layer 8
             coverGo.transform.SetParent(_testRoot.transform);
 
             var boxCol = coverGo.AddComponent<BoxCollider2D>();
             boxCol.size = new Vector2(2f, 2f);
-            boxCol.isTrigger = false; // Solid physical collider for Rigidbody2D
+            boxCol.isTrigger = false;
 
             var cover = coverGo.AddComponent<CoverObstacle>();
             SetField(cover, "_physicalCollider", boxCol);
@@ -82,13 +79,11 @@ namespace OblivionsEdge.Tests.Environment
             Assert.IsFalse(boxCol.isTrigger, "Cover obstacle must have a non-trigger collider to block Rigidbody2D entities.");
             Assert.AreEqual("HeavyBulkheadCrate", cover.CoverId);
 
-            // Simulate player trigger entering cover zone
             var playerGo = new GameObject("Player");
             playerGo.tag = GameConstants.TagPlayer;
             playerGo.transform.SetParent(_testRoot.transform);
             var playerCol = playerGo.AddComponent<CircleCollider2D>();
 
-            // Trigger detection
             InvokeMethod(cover, "OnTriggerEnter2D", playerCol);
             Assert.IsTrue(cover.IsPlayerTakingCover, "Player taking cover should be flagged as active.");
 
@@ -99,7 +94,6 @@ namespace OblivionsEdge.Tests.Environment
         [Test]
         public void TC03_CompactArenaDistanceConstraints()
         {
-            // Verify that the arena layout keeps Boss, Core, and Forge accessible within compact limits
             var arenaGo = new GameObject("ArenaValidator");
             arenaGo.transform.SetParent(_testRoot.transform);
             var validator = arenaGo.AddComponent<LevelRouteValidator>();
@@ -160,15 +154,12 @@ namespace OblivionsEdge.Tests.Environment
 
             SetField(atmos, "_targetLight", light);
 
-            // Test DarkHorror
             atmos.ActiveMode = LightingMode.DarkHorror;
             Assert.AreEqual(LightingMode.DarkHorror, atmos.ActiveMode);
 
-            // Test RedEmergencyStrobe
             atmos.ActiveMode = LightingMode.RedEmergencyStrobe;
             Assert.AreEqual(LightingMode.RedEmergencyStrobe, atmos.ActiveMode);
 
-            // Test BlueVioletDeathStorm
             atmos.ActiveMode = LightingMode.BlueVioletDeathStorm;
             Assert.AreEqual(LightingMode.BlueVioletDeathStorm, atmos.ActiveMode);
         }
@@ -180,7 +171,6 @@ namespace OblivionsEdge.Tests.Environment
             audioGo.transform.SetParent(_testRoot.transform);
             var controller = audioGo.AddComponent<AudioAmbienceController>();
 
-            // Trigger attack warning alarm
             controller.TriggerAttackWarning(true);
             Assert.IsTrue(controller.IsAlarmActive);
 
@@ -191,7 +181,6 @@ namespace OblivionsEdge.Tests.Environment
         [Test]
         public void TC07_TransmissionAndWeaponLoreNarrative()
         {
-            // Teammate Transmission
             var transGo = new GameObject("CommsTerminal");
             transGo.transform.SetParent(_testRoot.transform);
             var trans = transGo.AddComponent<TransmissionTerminal>();
@@ -205,7 +194,6 @@ namespace OblivionsEdge.Tests.Environment
             Assert.IsTrue(trans.HasPlayedTransmission);
             Assert.IsTrue(transmissionFired);
 
-            // Weapon Lore Note
             var noteGo = new GameObject("WeaponNote");
             noteGo.transform.SetParent(_testRoot.transform);
             var note = noteGo.AddComponent<WeaponLoreNote>();
@@ -218,6 +206,100 @@ namespace OblivionsEdge.Tests.Environment
 
             Assert.IsTrue(note.IsRead);
             Assert.IsTrue(noteInspected);
+        }
+
+        [Test]
+        public void TC08_FourSectorsDerelictVesselLayout()
+        {
+            // Sector 1: Crew Quarters
+            var s1 = new GameObject("Sector1_CrewQuarters");
+            s1.transform.SetParent(_testRoot.transform);
+            var z1 = s1.AddComponent<SpaceshipZone>();
+            SetField(z1, "_zoneType", SpaceshipZoneType.StartingCorridor);
+            SetField(z1, "_zoneName", "Sector 1: Derelict Crew Quarters");
+
+            // Sector 2: Optics Lab
+            var s2 = new GameObject("Sector2_OpticsLab");
+            s2.transform.SetParent(_testRoot.transform);
+            var z2 = s2.AddComponent<SpaceshipZone>();
+            SetField(z2, "_zoneType", SpaceshipZoneType.EdgePuzzleRoom);
+            SetField(z2, "_zoneName", "Sector 2: Optics Lab (Edge Puzzle)");
+
+            // Sector 3: Engineering Bay
+            var s3 = new GameObject("Sector3_EngineeringBay");
+            s3.transform.SetParent(_testRoot.transform);
+            var z3 = s3.AddComponent<SpaceshipZone>();
+            SetField(z3, "_zoneType", SpaceshipZoneType.HandlePuzzleRoom);
+            SetField(z3, "_zoneName", "Sector 3: Engineering Bay (Handle Puzzle)");
+
+            // Sector 4: Bio-Containment Nest
+            var s4 = new GameObject("Sector4_BioContainmentNest");
+            s4.transform.SetParent(_testRoot.transform);
+            var z4 = s4.AddComponent<SpaceshipZone>();
+            SetField(z4, "_zoneType", SpaceshipZoneType.AlienNestArena);
+            SetField(z4, "_zoneName", "Sector 4: Bio-Containment Nest (Boss Arena & Forge)");
+
+            Assert.AreEqual("Sector 1: Derelict Crew Quarters", z1.ZoneName);
+            Assert.AreEqual("Sector 2: Optics Lab (Edge Puzzle)", z2.ZoneName);
+            Assert.AreEqual("Sector 3: Engineering Bay (Handle Puzzle)", z3.ZoneName);
+            Assert.AreEqual("Sector 4: Bio-Containment Nest (Boss Arena & Forge)", z4.ZoneName);
+        }
+
+        [Test]
+        public void TC09_FloorCeilingWallCollidersLayer8()
+        {
+            // Verify that floors, ceilings, and walls strictly reside on Layer 8 (Environment)
+            string[] surfaces = { "Floor_Optics", "Ceiling_Optics", "Wall_Left_Quarters", "Wall_Right_Nest" };
+            foreach (var name in surfaces)
+            {
+                var surfaceGo = new GameObject(name);
+                surfaceGo.layer = GameConstants.LayerEnvironmentIndex; // Layer 8
+                surfaceGo.transform.SetParent(_testRoot.transform);
+
+                var boxCol = surfaceGo.AddComponent<BoxCollider2D>();
+                boxCol.size = new Vector2(4f, 1f);
+                boxCol.isTrigger = false;
+
+                Assert.AreEqual(GameConstants.LayerEnvironmentIndex, surfaceGo.layer, $"{name} must be on Layer 8 (Environment).");
+                Assert.IsFalse(boxCol.isTrigger, $"{name} must have a non-trigger BoxCollider2D.");
+            }
+        }
+
+        [Test]
+        public void TC10_FlashlightAndLaserReflectionPuzzles()
+        {
+            // Flashlight in Sector 1
+            var flashGo = new GameObject("FlashlightStation");
+            flashGo.transform.SetParent(_testRoot.transform);
+            var flash = flashGo.AddComponent<FlashlightStation>();
+
+            Assert.IsFalse(flash.IsCollected);
+            Assert.IsTrue(flash.CanInteract(null));
+            flash.Interact(null);
+            Assert.IsTrue(flash.IsCollected);
+            Assert.IsFalse(flash.CanInteract(null));
+
+            // Laser Reflection in Sector 2
+            var laserGo = new GameObject("OpticsLaserStation");
+            laserGo.transform.SetParent(_testRoot.transform);
+            var laser = laserGo.AddComponent<OpticsLaserStation>();
+
+            Assert.IsFalse(laser.IsAligned);
+            Assert.IsFalse(laser.IsFragmentRetrieved);
+
+            // Step 1: Align mirrors
+            laser.Interact(null);
+            Assert.IsTrue(laser.IsAligned);
+            Assert.IsFalse(laser.IsFragmentRetrieved);
+
+            // Step 2: Retrieve Edge fragment
+            bool edgeRetrieved = false;
+            laser.OnEdgeCollected += (id) => {
+                if (id == "deathstorm_edge") edgeRetrieved = true;
+            };
+            laser.Interact(null);
+            Assert.IsTrue(laser.IsFragmentRetrieved);
+            Assert.IsTrue(edgeRetrieved);
         }
 
         private static void SetField(object target, string fieldName, object value)
