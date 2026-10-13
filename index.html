@@ -109,6 +109,37 @@
     <button onclick="toggleHelpModal()" class="hud-panel hover:bg-slate-800/50 text-slate-300 px-3 py-2 rounded-xl text-[10px] font-mono transition">? GUIDE</button>
   </div>
 
+  <!-- MISSION OBJECTIVE TRACKER HUD -->
+  <div id="questTrackerPanel" class="absolute top-16 right-3 z-20 pointer-events-auto transition-all duration-300">
+    <div class="hud-panel rounded-2xl p-3 w-64 shadow-xl border border-cyan-500/40 space-y-2">
+      <div class="flex items-center justify-between border-b border-slate-800/80 pb-1.5 cursor-pointer" onclick="toggleQuestTrackerFold()">
+        <span class="font-orb text-[10px] font-bold tracking-wider text-cyan-300 flex items-center gap-1.5">
+          <span class="w-2 h-2 rounded-full bg-cyan-400 animate-pulse shadow-[0_0_8px_#22d3ee]"></span>
+          <span>MISSION DIRECTIVES</span>
+        </span>
+        <span id="questFoldIcon" class="text-[10px] text-slate-400 font-mono">▼</span>
+      </div>
+      <div id="questTrackerContent" class="space-y-1.5 text-[9px] font-mono">
+        <div class="flex items-center justify-between text-slate-300 bg-slate-950/60 px-2 py-1 rounded-lg border border-slate-800/60">
+          <span class="flex items-center gap-1.5"><span>🧩</span><span>FACILITY PUZZLES</span></span>
+          <span id="questPuzzlesText" class="font-bold text-amber-400 font-orb">0/5</span>
+        </div>
+        <div class="flex items-center justify-between text-slate-300 bg-slate-950/60 px-2 py-1 rounded-lg border border-slate-800/60">
+          <span class="flex items-center gap-1.5"><span>💾</span><span>AUDIO DATAPADS</span></span>
+          <span id="questDatapadsText" class="font-bold text-cyan-400 font-orb">0/4</span>
+        </div>
+        <div class="flex items-center justify-between text-slate-300 bg-slate-950/60 px-2 py-1 rounded-lg border border-slate-800/60">
+          <span class="flex items-center gap-1.5"><span>👾</span><span>XENARCH KILLS</span></span>
+          <span id="questKillsText" class="font-bold text-purple-400 font-orb">0 KILLS</span>
+        </div>
+        <div class="pt-1 text-[8.5px] text-slate-400 border-t border-slate-800/60 flex items-center justify-between">
+          <span>DIRECTIVE:</span>
+          <span id="questSectorGoalText" class="text-emerald-400 font-semibold truncate max-w-[135px]">SOLVE REFINERY & ORBITAL</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- BOSS HUD -->
   <div id="bossHud" class="absolute top-[5.5rem] left-1/2 -translate-x-1/2 w-11/12 max-w-xl z-20 pointer-events-none transition-all duration-500 opacity-0 -translate-y-4">
     <div class="hud-panel rounded-xl p-3" style="border-color:rgba(239,68,68,.4)">
@@ -410,71 +441,134 @@
       </div>
 
       <!-- Chapter Tabs -->
-      <div class="flex gap-2 border-b border-slate-800 pb-3 mb-3 text-[10px] font-mono z-10">
+      <div class="flex gap-2 border-b border-slate-800 pb-3 mb-3 text-[10px] font-mono z-10 flex-wrap">
         <button onclick="setStoryChapter(0)" id="storyTab0" class="btn-hud px-3 py-1.5 rounded-xl bg-purple-900/70 border-purple-500 text-purple-200 font-bold transition">PROLOGUE</button>
         <button onclick="setStoryChapter(1)" id="storyTab1" class="btn-hud px-3 py-1.5 rounded-xl bg-slate-950 border-slate-800 text-slate-400 hover:text-slate-200 transition">CHAPTER I: GENESIS</button>
         <button onclick="setStoryChapter(2)" id="storyTab2" class="btn-hud px-3 py-1.5 rounded-xl bg-slate-950 border-slate-800 text-slate-400 hover:text-slate-200 transition">CHAPTER II: DEATHSTORM</button>
         <button onclick="setStoryChapter(3)" id="storyTab3" class="btn-hud px-3 py-1.5 rounded-xl bg-slate-950 border-slate-800 text-slate-400 hover:text-slate-200 transition">CHAPTER III: VOID RECKONING</button>
+        <button onclick="showDatapadsTab()" id="storyTab4" class="btn-hud px-3 py-1.5 rounded-xl bg-slate-950 border-slate-800 text-slate-400 hover:text-slate-200 transition flex items-center gap-1.5">
+          <span>💾</span><span>AUDIO DATAPADS (<span id="storyDatapadCount">0</span>/4)</span>
+        </button>
       </div>
 
-      <!-- Main Story Body -->
-      <div class="flex-1 overflow-y-auto grid grid-cols-1 md:grid-cols-12 gap-5 z-10 pr-1">
-        <!-- Visual Artwork Card -->
-        <div class="md:col-span-5 bg-slate-950/90 rounded-2xl border border-slate-800/80 p-3 flex flex-col items-center justify-center relative overflow-hidden shadow-inner">
-          <div id="storyArtworkContainer" class="w-full h-56 rounded-xl flex items-center justify-center overflow-hidden border border-slate-800/80 bg-gradient-to-b from-slate-900 to-[#040813]"></div>
-          <div id="storyArtworkCaption" class="mt-2 text-[9px] font-mono text-cyan-400 tracking-wider text-center">
-            FIGURE 1.1: USSC OBLIVION DERELICT AT ABYSS EDGE
-          </div>
-        </div>
-
-        <!-- Lore Text & Audio Narrator -->
-        <div class="md:col-span-7 flex flex-col justify-between space-y-3">
-          <div>
-            <div id="storyChapterBadge" class="text-[10px] font-mono text-purple-400 font-bold uppercase tracking-wider mb-1">
-              PROLOGUE // DISPATCH TO EVA UNIT 09
+      <!-- Main Story Chapters View -->
+      <div id="storyChaptersView" class="flex-1 flex flex-col justify-between overflow-hidden">
+        <div class="flex-1 overflow-y-auto grid grid-cols-1 md:grid-cols-12 gap-5 z-10 pr-1">
+          <!-- Visual Artwork Card -->
+          <div class="md:col-span-5 bg-slate-950/90 rounded-2xl border border-slate-800/80 p-3 flex flex-col items-center justify-center relative overflow-hidden shadow-inner">
+            <div id="storyArtworkContainer" class="w-full h-56 rounded-xl flex items-center justify-center overflow-hidden border border-slate-800/80 bg-gradient-to-b from-slate-900 to-[#040813]"></div>
+            <div id="storyArtworkCaption" class="mt-2 text-[9px] font-mono text-cyan-400 tracking-wider text-center">
+              FIGURE 1.1: USSC OBLIVION DERELICT AT ABYSS EDGE
             </div>
-            <h4 id="storyChapterTitle" class="font-orb text-base font-black text-slate-100 glow-purple mb-2">
-              The Catastrophe at Oblivion's Outpost
-            </h4>
-            <div id="storyChapterText" class="text-[11px] text-slate-300 font-mono leading-relaxed space-y-2"></div>
           </div>
 
-          <!-- Voice Synthesizer & Audio Equalizer Panel -->
-          <div class="p-3 bg-slate-950/80 rounded-2xl border border-purple-500/40 flex items-center justify-between">
-            <div class="flex items-center gap-3">
-              <button onclick="toggleVoiceNarration()" id="voiceToggleBtn" class="btn-hud px-4 py-2 bg-gradient-to-r from-purple-700 to-indigo-600 hover:from-purple-600 hover:to-indigo-500 text-white font-mono font-bold text-[10px] rounded-xl shadow-lg flex items-center gap-2 transition">
-                <span id="voiceIcon">🔊</span>
-                <span id="voiceBtnText">PLAY VOICE NARRATION</span>
-              </button>
-              <div id="voiceEqualizer" class="flex items-end gap-1 h-5 hidden">
-                <div class="w-1 bg-purple-400 rounded-full eq-bar-1"></div>
-                <div class="w-1 bg-cyan-400 rounded-full eq-bar-2"></div>
-                <div class="w-1 bg-pink-400 rounded-full eq-bar-3"></div>
-                <div class="w-1 bg-purple-400 rounded-full eq-bar-4"></div>
+          <!-- Lore Text & Audio Narrator -->
+          <div class="md:col-span-7 flex flex-col justify-between space-y-3">
+            <div>
+              <div id="storyChapterBadge" class="text-[10px] font-mono text-purple-400 font-bold uppercase tracking-wider mb-1">
+                PROLOGUE // DISPATCH TO EVA UNIT 09
+              </div>
+              <h4 id="storyChapterTitle" class="font-orb text-base font-black text-slate-100 glow-purple mb-2">
+                The Catastrophe at Oblivion's Outpost
+              </h4>
+              <div id="storyChapterText" class="text-[11px] text-slate-300 font-mono leading-relaxed space-y-2"></div>
+            </div>
+
+            <!-- Voice Synthesizer & Audio Equalizer Panel -->
+            <div class="p-3 bg-slate-950/80 rounded-2xl border border-purple-500/40 flex items-center justify-between">
+              <div class="flex items-center gap-3">
+                <button onclick="toggleVoiceNarration()" id="voiceToggleBtn" class="btn-hud px-4 py-2 bg-gradient-to-r from-purple-700 to-indigo-600 hover:from-purple-600 hover:to-indigo-500 text-white font-mono font-bold text-[10px] rounded-xl shadow-lg flex items-center gap-2 transition">
+                  <span id="voiceIcon">🔊</span>
+                  <span id="voiceBtnText">PLAY VOICE NARRATION</span>
+                </button>
+                <div id="voiceEqualizer" class="flex items-end gap-1 h-5 hidden">
+                  <div class="w-1 bg-purple-400 rounded-full eq-bar-1"></div>
+                  <div class="w-1 bg-cyan-400 rounded-full eq-bar-2"></div>
+                  <div class="w-1 bg-pink-400 rounded-full eq-bar-3"></div>
+                  <div class="w-1 bg-purple-400 rounded-full eq-bar-4"></div>
+                </div>
+              </div>
+              <div class="text-[9px] font-mono text-slate-400 text-right">
+                <div>VOCAL HARMONICS: <span id="voiceStatusText" class="text-purple-400 font-bold">READY</span></div>
+                <div class="text-slate-500">VOICE SYNTHESIS v2.4</div>
               </div>
             </div>
-            <div class="text-[9px] font-mono text-slate-400 text-right">
-              <div>VOCAL HARMONICS: <span id="voiceStatusText" class="text-purple-400 font-bold">READY</span></div>
-              <div class="text-slate-500">VOICE SYNTHESIS v2.4</div>
-            </div>
           </div>
+        </div>
+
+        <!-- Navigation Footer -->
+        <div class="flex justify-between items-center border-t border-slate-800 pt-3 mt-3 text-[10px] font-mono text-slate-400 z-10">
+          <button onclick="prevStoryChapter()" class="btn-hud px-4 py-2 rounded-xl bg-slate-800 text-slate-200 font-bold transition">
+            &larr; PREVIOUS CHAPTER
+          </button>
+          <div class="flex items-center gap-2">
+            <span class="w-2 h-2 rounded-full bg-purple-400" id="dot0"></span>
+            <span class="w-2 h-2 rounded-full bg-slate-700" id="dot1"></span>
+            <span class="w-2 h-2 rounded-full bg-slate-700" id="dot2"></span>
+            <span class="w-2 h-2 rounded-full bg-slate-700" id="dot3"></span>
+          </div>
+          <button onclick="nextStoryChapter()" class="btn-hud px-5 py-2 rounded-xl bg-purple-600 text-white font-bold shadow-lg transition">
+            NEXT CHAPTER &rarr;
+          </button>
         </div>
       </div>
 
-      <!-- Navigation Footer -->
-      <div class="flex justify-between items-center border-t border-slate-800 pt-3 mt-3 text-[10px] font-mono text-slate-400 z-10">
-        <button onclick="prevStoryChapter()" class="btn-hud px-4 py-2 rounded-xl bg-slate-800 text-slate-200 font-bold transition">
-          &larr; PREVIOUS CHAPTER
-        </button>
-        <div class="flex items-center gap-2">
-          <span class="w-2 h-2 rounded-full bg-purple-400" id="dot0"></span>
-          <span class="w-2 h-2 rounded-full bg-slate-700" id="dot1"></span>
-          <span class="w-2 h-2 rounded-full bg-slate-700" id="dot2"></span>
-          <span class="w-2 h-2 rounded-full bg-slate-700" id="dot3"></span>
+      <!-- Recovered Audio Datapads Archive View (Tab 4) -->
+      <div id="storyDatapadsView" class="flex-1 overflow-y-auto hidden space-y-3 z-10 pr-1"></div>
+    </div>
+  </div>
+
+  <!-- DATAPAD LORE INSPECTION MODAL -->
+  <div id="modalDatapad" class="absolute inset-0 bg-black/88 backdrop-blur-md flex items-center justify-center z-50 hidden">
+    <div class="hud-panel rounded-3xl p-6 w-[36rem] max-h-[85vh] flex flex-col shadow-2xl relative overflow-hidden" style="border-color:rgba(6,182,212,0.8);box-shadow:0 0 50px rgba(6,182,212,0.25)">
+      <div class="flex justify-between items-center border-b border-slate-800 pb-3 mb-3 z-10">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-2xl bg-cyan-950 border border-cyan-500/80 flex items-center justify-center text-xl shadow-lg">💾</div>
+          <div>
+            <h3 class="font-orb text-sm font-bold text-cyan-300 tracking-wider flex items-center gap-2">
+              <span id="datapadHeaderTitle">ENCRYPTED AUDIO DATAPAD</span>
+              <span class="text-[9px] bg-cyan-950 text-cyan-300 px-2 py-0.5 rounded border border-cyan-700">DECRYPTED</span>
+            </h3>
+            <p id="datapadHeaderSub" class="text-[10px] text-slate-400">Classified telemetry audio recording recovered from field personnel.</p>
+          </div>
         </div>
-        <button onclick="nextStoryChapter()" class="btn-hud px-5 py-2 rounded-xl bg-purple-600 text-white font-bold shadow-lg transition">
-          NEXT CHAPTER &rarr;
-        </button>
+        <button onclick="closeDatapadModal()" class="text-slate-400 hover:text-white text-2xl font-mono px-2">&times;</button>
+      </div>
+
+      <div class="bg-slate-950/80 rounded-2xl p-3 border border-slate-800/80 mb-3 grid grid-cols-2 gap-2 text-[10px] font-mono z-10">
+        <div>OFFICER: <span id="datapadOfficer" class="text-cyan-300 font-bold">H. Kowalski</span></div>
+        <div>STARDATE: <span id="datapadStardate" class="text-slate-300 font-bold">2184.221</span></div>
+        <div>LOCATION: <span id="datapadLocation" class="text-amber-400 font-bold">Sector 1 Refinery</span></div>
+        <div>REWARD: <span class="text-emerald-400 font-bold">+50 NC &bull; +20 SP</span></div>
+      </div>
+
+      <div class="p-3 bg-cyan-950/20 rounded-2xl border border-cyan-500/40 flex items-center justify-between mb-3 z-10">
+        <div class="flex items-center gap-3">
+          <button onclick="toggleDatapadAudio()" id="datapadAudioBtn" class="btn-hud px-4 py-2 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white font-mono font-bold text-[10px] rounded-xl shadow-lg flex items-center gap-2 transition">
+            <span id="datapadAudioIcon">🔊</span>
+            <span id="datapadAudioText">PLAY TRANSMISSION</span>
+          </button>
+          <div id="datapadEqualizer" class="flex items-end gap-1 h-5 hidden">
+            <div class="w-1 bg-cyan-400 rounded-full eq-bar-1"></div>
+            <div class="w-1 bg-blue-400 rounded-full eq-bar-2"></div>
+            <div class="w-1 bg-teal-300 rounded-full eq-bar-3"></div>
+            <div class="w-1 bg-cyan-400 rounded-full eq-bar-4"></div>
+          </div>
+        </div>
+        <span id="datapadStatusText" class="text-[9px] font-mono text-cyan-400 font-bold">AUDIO READY</span>
+      </div>
+
+      <div class="flex-1 overflow-y-auto bg-slate-950/60 p-4 rounded-2xl border border-slate-800/80 text-[11px] font-mono text-slate-200 leading-relaxed mb-4 z-10">
+        <div class="text-[9px] text-cyan-400 font-bold uppercase tracking-wider mb-1 flex items-center gap-1.5">
+          <span class="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-ping"></span>
+          <span>DECRYPTED VOICE TRANSCRIPTION:</span>
+        </div>
+        <p id="datapadTranscript" class="italic text-slate-300"></p>
+      </div>
+
+      <div class="flex justify-between items-center text-[10px] font-mono z-10">
+        <span class="text-emerald-400">✓ Log saved to Vessel Archives [H]</span>
+        <button onclick="closeDatapadModal()" class="btn-hud btn-cyan px-5 py-2 rounded-xl">DISMISS</button>
       </div>
     </div>
   </div>
@@ -616,7 +710,10 @@
     ],
     buildings:[], platforms:[], interactables:[], pickups:[], crates:[], drones:[], bullets:[], particles:[],
     boss:{ x:3400,y:430,vx:0,vy:0,w:90,h:90,armor:500,maxArmor:500,hp:800,maxHp:800,phase:1,staggerTimer:0,attackTimer:0,active:false,defeated:false },
-    craftingCountdown:60, craftingActive:false
+    craftingCountdown:60, craftingActive:false,
+    datapadsRecovered: { kowalski:false, chen:false, vane:false, thorne:false },
+    activeDatapadVoice: null,
+    questTrackerFolded: false
   };
 
   // =====================================================================
@@ -624,6 +721,7 @@
   // =====================================================================
   function initLevel(lvlNum) {
     state.currentLevel = lvlNum;
+    if (typeof updateObjectiveTrackerUI === 'function') updateObjectiveTrackerUI();
     state.bullets = []; state.particles = []; state.pickups = [];
     state.player.x = 120; state.player.y = 440;
     state.player.vx = 0; state.player.vy = 0;
@@ -686,10 +784,12 @@
       ];
 
       state.interactables = [
-        { id:"shop_armory",    x:720,  y:480, r:40, title:"Armory Shop Kiosk",       active:true },
-        { id:"puzzle_handle",  x:1640, y:480, r:40, title:"Refinery Dial Lock",       active:true },
-        { id:"puzzle_orbital", x:1060, y:350, r:45, title:"Orbital Uplink Terminal",  active:true },
-        { id:"airlock_exit1",  x:2520, y:480, r:45, title:"Sector 2 Transit Gate",    active:true }
+        { id:"shop_armory",      x:720,  y:480, r:40, title:"Armory Shop Kiosk",       active:true },
+        { id:"puzzle_handle",    x:1640, y:480, r:40, title:"Refinery Dial Lock",       active:true },
+        { id:"puzzle_orbital",   x:1060, y:350, r:45, title:"Orbital Uplink Terminal",  active:true },
+        { id:"datapad_kowalski", x:1500, y:180, r:35, title:"Audio Log: Kowalski [E]", active:true, padId:"kowalski" },
+        { id:"datapad_chen",     x:1120, y:160, r:35, title:"Audio Log: Chen [E]",     active:true, padId:"chen" },
+        { id:"airlock_exit1",    x:2520, y:480, r:45, title:"Sector 2 Transit Gate",    active:true }
       ];
 
       state.drones = [
@@ -752,11 +852,13 @@
       ];
 
       state.interactables = [
-        { id:"heal_pod",       x:680,  y:480, r:40, title:"Med-Bay Regeneration Pod", active:true },
-        { id:"puzzle_gene",    x:660,  y:230, r:40, title:"Alien Gene Sequencer",     active:true }, // rooftop
-        { id:"puzzle_edge",    x:1620, y:480, r:40, title:"Optics Laser Conduit",     active:true },
-        { id:"puzzle_warp",    x:1560, y:195, r:40, title:"Warp Core Matrix",         active:true }, // rooftop
-        { id:"airlock_exit2",  x:2530, y:480, r:45, title:"Orbital Freight Lift",     active:true }
+        { id:"heal_pod",        x:680,  y:480, r:40, title:"Med-Bay Regeneration Pod", active:true },
+        { id:"puzzle_gene",     x:660,  y:230, r:40, title:"Alien Gene Sequencer",     active:true }, // rooftop
+        { id:"puzzle_edge",     x:1620, y:480, r:40, title:"Optics Laser Conduit",     active:true },
+        { id:"puzzle_warp",     x:1560, y:195, r:40, title:"Warp Core Matrix",         active:true }, // rooftop
+        { id:"datapad_vane",    x:720,  y:145, r:35, title:"Audio Log: Dr. Vane [E]", active:true, padId:"vane" },
+        { id:"datapad_thorne",  x:1680, y:170, r:35, title:"Audio Log: Thorne [E]",  active:true, padId:"thorne" },
+        { id:"airlock_exit2",   x:2530, y:480, r:45, title:"Orbital Freight Lift",     active:true }
       ];
 
       state.drones = [
@@ -1040,6 +1142,7 @@
     if (isNewPress && (e.key===' '||k==='w'||e.key==='ArrowUp')) handleJumpPress();
     if (k==='e') triggerInteraction();
     if (k==='h') toggleStorylineModal();
+    if (k==='o') toggleQuestTrackerFold();
     if (k==='r') reloadWeapon();
     if (k==='b') toggleShop();
     if (k==='q') activateEmp();
@@ -1190,7 +1293,7 @@
       if (Math.hypot(m.x-cx,m.y-cy)<28) { m.angle=(m.angle+45)%180; laserPuzzle.beamProgress=0; playTone(520,'sine',0.08,0.08); renderLaserPuzzle(); }
     });
   }
-  function claimEdgeComponent() { state.inventory.edge=true; closeModals(); addCredits(100); showNotification("💎 OPTICS COMPONENT CLAIMED! +100 NC"); }
+  function claimEdgeComponent() { state.inventory.edge=true; closeModals(); addCredits(100); showNotification("💎 OPTICS COMPONENT CLAIMED! +100 NC"); if (typeof updateObjectiveTrackerUI==='function') updateObjectiveTrackerUI(); }
 
   // =====================================================================
   // PUZZLE 2: ROTARY CIPHER (Level 1 ground floor — original)
@@ -1210,7 +1313,7 @@
       sfxPuzzle();
     }
   }
-  function claimHandleComponent() { state.inventory.handle=true; closeModals(); addCredits(100); showNotification("🔩 REFINERY DIAL OVERRIDDEN! +100 NC"); }
+  function claimHandleComponent() { state.inventory.handle=true; closeModals(); addCredits(100); showNotification("🔩 REFINERY DIAL OVERRIDDEN! +100 NC"); if (typeof updateObjectiveTrackerUI==='function') updateObjectiveTrackerUI(); }
 
   // =====================================================================
   // PUZZLE 3: ORBITAL SEQUENCE (Level 1 ROOFTOP — NEW/TOUGH)
@@ -1305,7 +1408,7 @@
   })();
 
   function handleOrbitalClick(e) { orbitalPuzzle.click(e); }
-  function claimOrbitalComponent() { state.inventory.orbital=true; closeModals(); addCredits(150); showNotification("🛰️ ORBITAL UPLINK ESTABLISHED! +150 NC"); }
+  function claimOrbitalComponent() { state.inventory.orbital=true; closeModals(); addCredits(150); showNotification("🛰️ ORBITAL UPLINK ESTABLISHED! +150 NC"); if (typeof updateObjectiveTrackerUI==='function') updateObjectiveTrackerUI(); }
 
   // =====================================================================
   // PUZZLE 4: ALIEN GENE SEQUENCER (Level 2 ROOFTOP — NEW/TOUGH)
@@ -1365,7 +1468,7 @@
 
   function checkGenePuzzle() { genePuzzle.check(); }
   function resetGenePuzzle() { genePuzzle.reset(); }
-  function claimGeneComponent() { state.inventory.gene=true; closeModals(); addCredits(150); showNotification("🧬 ALIEN GENOME DECODED! +150 NC"); }
+  function claimGeneComponent() { state.inventory.gene=true; closeModals(); addCredits(150); showNotification("🧬 ALIEN GENOME DECODED! +150 NC"); if (typeof updateObjectiveTrackerUI==='function') updateObjectiveTrackerUI(); }
 
   // =====================================================================
   // PUZZLE 5: WARP CORE PIPE MATRIX (Level 2 ROOFTOP — NEW/TOUGH)
@@ -1475,7 +1578,7 @@
   })();
 
   function handleWarpClick(e) { warpPuzzle.click(e); }
-  function claimWarpComponent() { state.inventory.warp=true; closeModals(); addCredits(150); showNotification("⚛️ WARP CORE MATRIX ALIGNED! +150 NC"); }
+  function claimWarpComponent() { state.inventory.warp=true; closeModals(); addCredits(150); showNotification("⚛️ WARP CORE MATRIX ALIGNED! +150 NC"); if (typeof updateObjectiveTrackerUI === 'function') updateObjectiveTrackerUI(); }
 
   // =====================================================================
   // INTERACTION, WEAPONS, COMBAT
@@ -1486,6 +1589,7 @@
     for (const item of state.interactables) {
       if (!item.active) continue;
       if (Math.hypot(item.x-px,item.y-py) < item.r+30) {
+        if (item.padId) { openDatapad(item.padId); return; }
         if      (item.id==='shop_armory')    { toggleShop(); }
         else if (item.id==='heal_pod')       { p.hp=p.maxHp; p.shield=p.maxShield; updateVitalsUI(); sfxBuy(); showNotification("💉 BIO-CELLULAR POD: Fully restored!"); }
         else if (item.id==='puzzle_handle')  { document.getElementById('modalHandlePuzzle').classList.remove('hidden'); }
@@ -1505,6 +1609,7 @@
 
   function triggerSectorClear() {
     sfxBuy(); addCredits(200);
+    playNarrativeSpeech(`Sector 0${state.currentLevel} secured. Threat suppression confirmed. Airlock depressurization complete.`);
     document.getElementById('levelClearSubtitle').textContent=`Sector 0${state.currentLevel} Successfully Cleared`;
     document.getElementById('clearTime').textContent=document.getElementById('clockDisplay').textContent;
     document.getElementById('clearKills').textContent=state.kills;
@@ -1520,11 +1625,12 @@
   }
 
   function closeModals() {
-    ['modalEdgePuzzle','modalHandlePuzzle','modalOrbitalPuzzle','modalGenePuzzle','modalWarpPuzzle','modalHelp','modalShop','modalLevelClear','modalStoryline'].forEach(id=>{
+    ['modalEdgePuzzle','modalHandlePuzzle','modalOrbitalPuzzle','modalGenePuzzle','modalWarpPuzzle','modalHelp','modalShop','modalLevelClear','modalStoryline','modalDatapad'].forEach(id=>{
       const el = document.getElementById(id);
       if (el) el.classList.add('hidden');
     });
     stopVoiceNarration();
+    if (typeof stopDatapadVoice === 'function') stopDatapadVoice();
   }
   function toggleHelpModal() { document.getElementById('modalHelp').classList.toggle('hidden'); }
 
@@ -1711,10 +1817,12 @@
     const isHidden = modal.classList.contains('hidden');
     if (isHidden) {
       modal.classList.remove('hidden');
-      renderStoryChapter(currentStoryChapter);
+      setStoryChapter(currentStoryChapter);
+      updateObjectiveTrackerUI();
     } else {
       modal.classList.add('hidden');
       stopVoiceNarration();
+      stopDatapadVoice();
     }
   }
 
@@ -1722,6 +1830,13 @@
     if (idx < 0 || idx >= storylineData.length) return;
     currentStoryChapter = idx;
     stopVoiceNarration();
+    stopDatapadVoice();
+    const chapView = document.getElementById('storyChaptersView');
+    const padsView = document.getElementById('storyDatapadsView');
+    if (chapView) chapView.classList.remove('hidden');
+    if (padsView) padsView.classList.add('hidden');
+    const tab4 = document.getElementById('storyTab4');
+    if (tab4) tab4.className = 'btn-hud px-3 py-1.5 rounded-xl bg-slate-950 border-slate-800 text-slate-400 hover:text-slate-200 transition flex items-center gap-1.5';
     renderStoryChapter(idx);
     playTone(520, 'sine', 0.08, 0.08);
   }
@@ -1837,6 +1952,280 @@
     if (eq) eq.classList.add('hidden');
   }
 
+  // =====================================================================
+  // NARRATIVE AUDIO DATAPADS & QUEST TRACKER CONTROLLER
+  // =====================================================================
+  const datapadData = {
+    kowalski: {
+      id: 'kowalski',
+      sector: 1,
+      title: "Chief Engineer Kowalski // Blackout Incident",
+      officer: "H. Kowalski (Mining Operations)",
+      stardate: "2184.221",
+      location: "Sector 1 Refinery Gantry",
+      transcript: "Log Entry 418. Deep core drills hit an impenetrable obsidian geode cluster at level 9. Thirty minutes later, emergency power tripped across the entire perimeter grid. Something crawled out through the main cooling vents... it was not mechanical. If anyone finds this, override the refinery dial lock at 180 degrees before the atmospheric locks seal us in!",
+      voiceScript: "Log Entry 418. Chief Engineer Kowalski. Deep core drills struck an obsidian geode cluster. Emergency power tripped across the perimeter. Something crawled out through the cooling vents. Override the refinery dial lock at 180 degrees before the atmospheric seals collapse!",
+      color: "#f59e0b"
+    },
+    chen: {
+      id: 'chen',
+      sector: 1,
+      title: "Flight Officer Chen // Distress Transmission",
+      officer: "Flight Officer L. Chen (Escort Wing)",
+      stardate: "2184.222",
+      location: "Sector 1 Satellite Relay Rooftop",
+      transcript: "Mayday, mayday! This is Officer Chen broadcasting on emergency sub-space frequency 94.8. Our dropship was swarmed on touchdown by acid-spitting xenomorphs. I managed to align 3 of the 5 orbital nodes before my suit battery ruptured. Calibrate the relay in sequence 3-1-5-2-4 to reconnect to the orbital command fleet!",
+      voiceScript: "Mayday, mayday! Officer Chen broadcasting on sub-space frequency 94.8. Dropship swarmed by acid spitting xenomorphs. Calibrate the satellite relay nodes in sequence 3, 1, 5, 2, 4 to reconnect to the command fleet!",
+      color: "#a855f7"
+    },
+    vane: {
+      id: 'vane',
+      sector: 2,
+      title: "Dr. Elena Vane // Specimen-X Extraction",
+      officer: "Dr. Elena Vane (Lead Bio-Geneticist)",
+      stardate: "2184.223",
+      location: "Sector 2 Xenobiology Rooftop Lab",
+      transcript: "Xenarch genome analysis confirms extreme hyper-mutagenic capability. Their cellular structures incorporate an unknown alien base pair: Psi-harmonics. Standard human DNA cannot decode it. You must cycle the gene sequencer to match the exact octet strand: Psi, G, A, Psi, T, C, Psi, A! The Xenarch Prime is using the central freight lift to ascend!",
+      voiceScript: "Xenarch genome analysis confirms extreme hyper-mutagenic capability. Cellular structure incorporates an alien base pair. Match the alien strand: Psi, G, A, Psi, T, C, Psi, A. The Xenarch Prime is ascending toward the citadel!",
+      color: "#10b981"
+    },
+    thorne: {
+      id: 'thorne',
+      sector: 2,
+      title: "Director Thorne // The Void Singularity Mandate",
+      officer: "Station Director M. Thorne",
+      stardate: "2184.224",
+      location: "Sector 2 Quantum Observatory Dome",
+      transcript: "Director Thorne to all remaining EVA personnel. The outpost is officially compromised under quarantine Directive Omega. The only way to breach the Xenarch Prime's void carapace is the DeathStorm Void Axe at the Sector 3 Synthesis Altar. Connect the plasma conduits through the Warp Core matrix immediately. Humanity's survival hinges on this strike!",
+      voiceScript: "Director Thorne to all surviving EVA personnel. The station is under quarantine Directive Omega. Forge the DeathStorm Void Axe at Sector 3's synthesis altar. Align the warp core plasma conduits immediately. Humanity's survival depends on you!",
+      color: "#f43f5e"
+    }
+  };
+
+  let activeDatapadId = null;
+  let isDatapadVoicePlaying = false;
+  let datapadUtterance = null;
+
+  function openDatapad(padId) {
+    initAudio();
+    const pad = datapadData[padId];
+    if (!pad) return;
+    activeDatapadId = padId;
+
+    const isFirstDiscovery = !state.datapadsRecovered[padId];
+    state.datapadsRecovered[padId] = true;
+
+    if (isFirstDiscovery) {
+      addCredits(50);
+      addScrap(20);
+      sfxBuy();
+      showNotification(`💾 AUDIO DATAPAD RECOVERED: +50 NC, +20 SP!`);
+    } else {
+      playTone(587, 'sine', 0.1, 0.08);
+    }
+
+    updateObjectiveTrackerUI();
+
+    document.getElementById('datapadHeaderTitle').textContent = pad.title;
+    document.getElementById('datapadOfficer').textContent = pad.officer;
+    document.getElementById('datapadStardate').textContent = pad.stardate;
+    document.getElementById('datapadLocation').textContent = pad.location;
+    document.getElementById('datapadTranscript').textContent = `"${pad.transcript}"`;
+
+    const modal = document.getElementById('modalDatapad');
+    if (modal) modal.classList.remove('hidden');
+
+    startDatapadVoice(padId);
+  }
+
+  function closeDatapadModal() {
+    stopDatapadVoice();
+    const modal = document.getElementById('modalDatapad');
+    if (modal) modal.classList.add('hidden');
+    activeDatapadId = null;
+  }
+
+  function toggleDatapadAudio() {
+    if (isDatapadVoicePlaying) {
+      stopDatapadVoice();
+    } else if (activeDatapadId) {
+      startDatapadVoice(activeDatapadId);
+    }
+  }
+
+  function startDatapadVoice(padId) {
+    if (!('speechSynthesis' in window)) return;
+    stopDatapadVoice();
+    const pad = datapadData[padId];
+    if (!pad) return;
+
+    datapadUtterance = new SpeechSynthesisUtterance(pad.voiceScript);
+    datapadUtterance.rate = 1.0;
+    datapadUtterance.pitch = 0.92;
+
+    const voices = window.speechSynthesis.getVoices();
+    const preferredVoice = voices.find(v => v.lang.startsWith('en') && (v.name.includes('Google') || v.name.includes('Natural') || v.name.includes('Samantha') || v.name.includes('Zira'))) || voices.find(v => v.lang.startsWith('en'));
+    if (preferredVoice) datapadUtterance.voice = preferredVoice;
+
+    datapadUtterance.onstart = () => {
+      isDatapadVoicePlaying = true;
+      const btn = document.getElementById('datapadAudioText');
+      if (btn) btn.textContent = "STOP TRANSMISSION";
+      const icon = document.getElementById('datapadAudioIcon');
+      if (icon) icon.textContent = "⏹️";
+      const eq = document.getElementById('datapadEqualizer');
+      if (eq) eq.classList.remove('hidden');
+      const st = document.getElementById('datapadStatusText');
+      if (st) {
+        st.textContent = "BROADCASTING...";
+        st.className = "text-[9px] font-mono text-cyan-400 font-bold animate-pulse";
+      }
+    };
+
+    datapadUtterance.onend = () => {
+      stopDatapadVoice();
+    };
+
+    datapadUtterance.onerror = () => {
+      stopDatapadVoice();
+    };
+
+    window.speechSynthesis.speak(datapadUtterance);
+  }
+
+  function stopDatapadVoice() {
+    if ('speechSynthesis' in window) {
+      window.speechSynthesis.cancel();
+    }
+    isDatapadVoicePlaying = false;
+    datapadUtterance = null;
+    const btn = document.getElementById('datapadAudioText');
+    if (btn) btn.textContent = "PLAY TRANSMISSION";
+    const icon = document.getElementById('datapadAudioIcon');
+    if (icon) icon.textContent = "🔊";
+    const eq = document.getElementById('datapadEqualizer');
+    if (eq) eq.classList.add('hidden');
+    const st = document.getElementById('datapadStatusText');
+    if (st) {
+      st.textContent = "AUDIO READY";
+      st.className = "text-[9px] font-mono text-cyan-400 font-bold";
+    }
+  }
+
+  function showDatapadsTab() {
+    stopVoiceNarration();
+    stopDatapadVoice();
+    const chapView = document.getElementById('storyChaptersView');
+    const padsView = document.getElementById('storyDatapadsView');
+    if (chapView) chapView.classList.add('hidden');
+    if (padsView) {
+      padsView.classList.remove('hidden');
+      renderStoryDatapadsArchive();
+    }
+
+    for (let i = 0; i < 4; i++) {
+      const tab = document.getElementById(`storyTab${i}`);
+      if (tab) tab.className = 'btn-hud px-3 py-1.5 rounded-xl bg-slate-950 border-slate-800 text-slate-400 hover:text-slate-200 transition';
+    }
+    const tab4 = document.getElementById('storyTab4');
+    if (tab4) tab4.className = 'btn-hud px-3 py-1.5 rounded-xl bg-cyan-900/80 border-cyan-400 text-cyan-100 font-bold shadow-[0_0_12px_rgba(6,182,212,0.4)] transition flex items-center gap-1.5';
+    playTone(520, 'sine', 0.08, 0.08);
+  }
+
+  function renderStoryDatapadsArchive() {
+    const container = document.getElementById('storyDatapadsView');
+    if (!container) return;
+    container.innerHTML = '';
+
+    const list = Object.values(datapadData);
+    list.forEach(pad => {
+      const isRecovered = !!state.datapadsRecovered[pad.id];
+      const card = document.createElement('div');
+      card.className = `p-4 rounded-2xl border transition-all ${isRecovered ? 'bg-slate-950/80 border-cyan-500/50 shadow-[0_0_15px_rgba(6,182,212,0.1)]' : 'bg-slate-950/40 border-slate-800/80 opacity-60'}`;
+      
+      card.innerHTML = `
+        <div class="flex items-start justify-between gap-3 mb-2">
+          <div class="flex items-center gap-2.5">
+            <div class="w-8 h-8 rounded-xl flex items-center justify-center text-sm ${isRecovered ? 'bg-cyan-950/80 border border-cyan-500/80 text-cyan-300' : 'bg-slate-900 border border-slate-700 text-slate-500'}">
+              ${isRecovered ? '💾' : '🔒'}
+            </div>
+            <div>
+              <div class="font-orb text-[11px] font-bold ${isRecovered ? 'text-slate-100' : 'text-slate-400'} flex items-center gap-2">
+                <span>${pad.title}</span>
+                ${isRecovered ? '<span class="text-[8px] bg-emerald-950 text-emerald-300 border border-emerald-700 px-1.5 py-0.2 rounded font-mono">RECOVERED</span>' : '<span class="text-[8px] bg-slate-900 text-slate-500 border border-slate-700 px-1.5 py-0.2 rounded font-mono">LOCKED</span>'}
+              </div>
+              <div class="text-[9px] font-mono text-slate-400 mt-0.5">
+                ${pad.officer} &bull; ${pad.stardate} &bull; <span class="text-cyan-400">${pad.location}</span>
+              </div>
+            </div>
+          </div>
+          ${isRecovered ? `<button onclick="startDatapadVoice('${pad.id}')" class="btn-hud btn-cyan px-3 py-1.5 rounded-xl text-[9px] flex items-center gap-1 shadow-md"><span>🔊</span><span>PLAY LOG</span></button>` : `<span class="text-[9px] font-mono text-slate-500">SECTOR 0${pad.sector}</span>`}
+        </div>
+        <div class="text-[10px] font-mono ${isRecovered ? 'text-slate-300 italic' : 'text-slate-500'} bg-slate-950/60 p-2.5 rounded-xl border border-slate-900 leading-relaxed">
+          ${isRecovered ? `"${pad.transcript}"` : `🔒 ENCRYPTED FIELD TELEMETRY — Locate this physical datapad in Sector 0${pad.sector} (${pad.location}) to decrypt.`}
+        </div>
+      `;
+      container.appendChild(card);
+    });
+  }
+
+  function playNarrativeSpeech(text, { pitch=0.92, rate=1.02 }={}) {
+    if (!('speechSynthesis' in window) || !audioEnabled) return;
+    try {
+      window.speechSynthesis.cancel();
+      const utt = new SpeechSynthesisUtterance(text);
+      utt.rate = rate;
+      utt.pitch = pitch;
+      const voices = window.speechSynthesis.getVoices();
+      const preferredVoice = voices.find(v => v.lang.startsWith('en') && (v.name.includes('Google') || v.name.includes('Natural') || v.name.includes('Samantha') || v.name.includes('Zira'))) || voices.find(v => v.lang.startsWith('en'));
+      if (preferredVoice) utt.voice = preferredVoice;
+      window.speechSynthesis.speak(utt);
+    } catch(e) {}
+  }
+
+  function toggleQuestTrackerFold() {
+    state.questTrackerFolded = !state.questTrackerFolded;
+    const content = document.getElementById('questTrackerContent');
+    const icon = document.getElementById('questFoldIcon');
+    if (content) content.classList.toggle('hidden', state.questTrackerFolded);
+    if (icon) icon.textContent = state.questTrackerFolded ? '▶' : '▼';
+    playTone(480, 'sine', 0.05, 0.05);
+  }
+
+  function updateObjectiveTrackerUI() {
+    const solvedPuzzles = [state.inventory.handle, state.inventory.edge, state.inventory.orbital, state.inventory.gene, state.inventory.warp].filter(Boolean).length;
+    const recoveredPads = Object.values(state.datapadsRecovered).filter(Boolean).length;
+    
+    const puzEl = document.getElementById('questPuzzlesText');
+    if (puzEl) {
+      puzEl.textContent = `${solvedPuzzles}/5`;
+      puzEl.className = solvedPuzzles === 5 ? 'font-bold text-emerald-400 font-orb' : 'font-bold text-amber-400 font-orb';
+    }
+    
+    const padEl = document.getElementById('questDatapadsText');
+    if (padEl) {
+      padEl.textContent = `${recoveredPads}/4`;
+      padEl.className = recoveredPads === 4 ? 'font-bold text-emerald-400 font-orb' : 'font-bold text-cyan-400 font-orb';
+    }
+    
+    const killsEl = document.getElementById('questKillsText');
+    if (killsEl) killsEl.textContent = `${state.kills} KILLS`;
+    
+    const countEl = document.getElementById('storyDatapadCount');
+    if (countEl) countEl.textContent = recoveredPads;
+
+    const goalEl = document.getElementById('questSectorGoalText');
+    if (goalEl) {
+      if (state.currentLevel === 1) {
+        goalEl.textContent = solvedPuzzles >= 2 ? "BREACH AIRLOCK 2" : "SOLVE REFINERY & ORBITAL";
+      } else if (state.currentLevel === 2) {
+        goalEl.textContent = solvedPuzzles >= 4 ? "BOARD FREIGHT LIFT" : "DECODE GENE & WARP";
+      } else if (state.currentLevel === 3) {
+        goalEl.textContent = state.inventory.deathstorm ? "SLAY XENARCH PRIME" : "FORGE VOID AXE";
+      }
+    }
+  }
+
   function selectWeapon(idx) {
     state.curWeapIdx=idx;
     const w=state.weapons[idx];
@@ -1934,6 +2323,7 @@
     document.getElementById('bossHud').style.opacity='0';
     document.getElementById('countdownBanner').classList.add('hidden');
     sfxBuy();
+    playNarrativeSpeech("Priority transmission: Xenarch Prime obliterated. Bio-synthetic hive collapses across all sectors. USSC Oblivion secured. Commendation awarded.");
     for(let i=0;i<80;i++) state.particles.push({x:state.boss.x,y:state.boss.y,vx:(Math.random()-.5)*18,vy:(Math.random()-.5)*18,r:5,color:'#ec4899',life:80});
     spawnLootDrop(state.boss.x,state.boss.y,12); addCredits(500);
     setTimeout(()=>{
@@ -2139,6 +2529,7 @@
       if(!p.isDashing&&Math.hypot(d.x-(p.x+p.width/2),d.y-(p.y+p.height/2))<d.r+14) damagePlayer(d.isMiniBoss?24:12);
       if(d.hp<=0){
         state.kills++;
+        if (typeof updateObjectiveTrackerUI === 'function') updateObjectiveTrackerUI();
         spawnLootDrop(d.x,d.y,d.isMiniBoss?8:3);
         for(let k=0;k<18;k++) state.particles.push({x:d.x,y:d.y,vx:(Math.random()-.5)*8,vy:(Math.random()-.5)*8,r:3,color:'#7c3aed',life:28});
         state.drones.splice(i,1);
@@ -2183,7 +2574,10 @@
     if (p.shield>0){p.shield-=amount;if(p.shield<0){p.hp+=p.shield;p.shield=0;}}
     else p.hp-=amount;
     sfxHit(); state.shake=10; updateVitalsUI();
-    if (p.hp<=0) document.getElementById('modalGameOver').classList.remove('hidden');
+    if (p.hp<=0) {
+      document.getElementById('modalGameOver').classList.remove('hidden');
+      playNarrativeSpeech("Critical failure. Astronaut vitals flatlined. EVA suit integrity collapsed. Bio-hazard quarantine protocol failed.");
+    }
   }
 
 
@@ -2393,6 +2787,62 @@
     for(const term of state.interactables){
       const tx=term.x-camX, ty=term.y-camY;
       const pulse=0.5+0.5*Math.sin(t*0.06+term.x*0.01);
+      if (term.padId) {
+        // Holographic Audio Log Datapad
+        const isRecovered = state.datapadsRecovered && state.datapadsRecovered[term.padId];
+        const bob = Math.sin(t * 0.08 + term.x * 0.02) * 6;
+        const padY = ty + bob;
+        
+        ctx.save();
+        ctx.translate(tx, padY);
+
+        // Holographic projector light pedestal
+        const beamGrad = ctx.createLinearGradient(0, 16, 0, -22);
+        beamGrad.addColorStop(0, isRecovered ? 'rgba(56,189,248,0.3)' : 'rgba(245,158,11,0.35)');
+        beamGrad.addColorStop(1, 'transparent');
+        ctx.fillStyle = beamGrad;
+        ctx.beginPath();
+        ctx.moveTo(-16, 16); ctx.lineTo(16, 16); ctx.lineTo(10, -20); ctx.lineTo(-10, -20);
+        ctx.closePath();
+        ctx.fill();
+
+        // Datapad physical chassis
+        ctx.shadowColor = isRecovered ? '#38bdf8' : '#fbbf24';
+        ctx.shadowBlur = 14 * pulse;
+        ctx.fillStyle = '#0f172a';
+        ctx.strokeStyle = isRecovered ? '#0ea5e9' : '#f59e0b';
+        ctx.lineWidth = 1.8;
+        ctx.beginPath();
+        ctx.roundRect(-14, -10, 28, 20, 3);
+        ctx.fill();
+        ctx.stroke();
+
+        // Screen display
+        ctx.fillStyle = isRecovered ? '#0369a1' : '#78350f';
+        ctx.fillRect(-11, -7, 22, 14);
+
+        // Holographic audio waveform bars
+        const barColor = isRecovered ? '#e0f2fe' : '#fef08a';
+        ctx.fillStyle = barColor;
+        for (let b = 0; b < 4; b++) {
+          const bh = 3 + Math.sin(t * 0.18 + b * 1.5) * 3.5;
+          ctx.fillRect(-8 + b * 4, -bh / 2, 2.5, bh);
+        }
+
+        // Floating label & interact prompt
+        ctx.shadowBlur = 0;
+        ctx.font = 'bold 8px monospace';
+        ctx.textAlign = 'center';
+        ctx.fillStyle = isRecovered ? '#7dd3fc' : '#fde047';
+        ctx.fillText(term.title, 0, -16);
+        ctx.font = 'bold 7px monospace';
+        ctx.fillStyle = '#cbd5e1';
+        ctx.fillText(isRecovered ? '💾 REPLAY [E]' : '💾 AUDIO LOG [E]', 0, 21);
+
+        ctx.restore();
+        continue;
+      }
+
       ctx.fillStyle=`rgba(6,182,212,${0.06+0.04*pulse})`;
       ctx.beginPath(); ctx.arc(tx,ty,term.r,0,Math.PI*2); ctx.fill();
       ctx.shadowColor='#06b6d4'; ctx.shadowBlur=12*pulse;
