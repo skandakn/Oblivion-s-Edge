@@ -2,10 +2,10 @@
   "name": "oblivions-edge",
   "version": "1.0.0",
   "description": "OBLIVION'S EDGE — 2D Sci-Fi Survival Horror Web Game & Local Simulator",
-  "main": "server.js",
+  "main": "index.html",
   "scripts": {
-    "start": "node server.js",
-    "preview": "node server.js",
+    "start": "python -m http.server 8080",
+    "preview": "python -m http.server 8080",
     "serve": "python -m http.server 8080"
   },
   "keywords": [
