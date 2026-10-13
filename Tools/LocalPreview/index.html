@@ -527,7 +527,6 @@
       shake: 0,
       isGameOver: false,
       respawnInvulnerabilityFrames: 0,
-      respawnCheckpoint: { x: 120, y: 440 },
       player: {
         x: 160,
         y: 440,
@@ -634,7 +633,6 @@
       state.currentLevel = lvlNum;
       state.isGameOver = false;
       state.respawnInvulnerabilityFrames = 0;
-      state.respawnCheckpoint = { x: 120, y: 440 };
       state.bullets = [];
       state.particles = [];
       state.pickups = [];
@@ -1153,27 +1151,14 @@
     // --- LASER PUZZLE LOGIC (MEMBER 6) ---
     const laserPuzzle = {
       solved: false,
-      solutionAngles: [45, 45, 135, 225],
       mirrors: [
-        { x: 120, y: 70, angle: 0 },
-        { x: 120, y: 190, angle: 0 },
-        { x: 340, y: 190, angle: 0 },
-        { x: 340, y: 100, angle: 0 }
+        { x: 120, y: 70, angle: 45 },
+        { x: 340, y: 70, angle: 135 },
+        { x: 340, y: 190, angle: 225 },
+        { x: 220, y: 190, angle: 315 }
       ],
       targetX: 220, targetY: 100
     };
-
-    function getLaserBoundaryPoint(x, y, angle, width, height) {
-      const dx = Math.cos(angle);
-      const dy = Math.sin(angle);
-      const distances = [];
-      if (dx > 0.0001) distances.push((width - x) / dx);
-      else if (dx < -0.0001) distances.push(-x / dx);
-      if (dy > 0.0001) distances.push((height - y) / dy);
-      else if (dy < -0.0001) distances.push(-y / dy);
-      const distance = Math.min(...distances.filter(value => value >= 0));
-      return { x: x + dx * distance, y: y + dy * distance };
-    }
 
     function renderLaserPuzzle() {
       const cv = document.getElementById('laserCanvas');
@@ -1210,9 +1195,6 @@
         c.beginPath();
         c.arc(m.x, m.y, 4, 0, Math.PI * 2);
         c.fill();
-        c.fillStyle = '#cbd5e1';
-        c.font = '10px monospace';
-        c.fillText(String(laserPuzzle.mirrors.indexOf(m) + 1), m.x - 3, m.y - 20);
       });
 
       c.strokeStyle = '#22d3ee';
@@ -1221,40 +1203,20 @@
       c.moveTo(54, 70);
       c.lineTo(laserPuzzle.mirrors[0].x, laserPuzzle.mirrors[0].y);
 
-      let incomingAngle = Math.atan2(
-        laserPuzzle.mirrors[0].y - 70,
-        laserPuzzle.mirrors[0].x - 54
-      );
-      let firstMisalignedMirror = -1;
-
+      let isConnected = true;
       for (let i = 0; i < laserPuzzle.mirrors.length; i++) {
-        const mirror = laserPuzzle.mirrors[i];
-        const currentOrientation = ((mirror.angle % 180) + 180) % 180;
-        const targetOrientation = ((laserPuzzle.solutionAngles[i] % 180) + 180) % 180;
-        const nextPoint = i < laserPuzzle.mirrors.length - 1
-          ? laserPuzzle.mirrors[i + 1]
-          : { x: laserPuzzle.targetX, y: laserPuzzle.targetY };
-
-        if (currentOrientation !== targetOrientation) {
-          firstMisalignedMirror = i;
-          c.stroke();
-
-          const reflectedAngle = 2 * (mirror.angle * Math.PI / 180) - incomingAngle;
-          const boundary = getLaserBoundaryPoint(mirror.x, mirror.y, reflectedAngle, cv.width, cv.height);
-          c.beginPath();
-          c.strokeStyle = '#fb923c';
-          c.moveTo(mirror.x, mirror.y);
-          c.lineTo(boundary.x, boundary.y);
-          c.stroke();
-          break;
+        if (laserPuzzle.mirrors[i].angle % 360 !== [45, 135, 225, 315][i]) {
+          isConnected = false;
         }
-
-        c.lineTo(nextPoint.x, nextPoint.y);
-        incomingAngle = Math.atan2(nextPoint.y - mirror.y, nextPoint.x - mirror.x);
       }
 
-      if (firstMisalignedMirror === -1) {
+      if (isConnected) {
+        c.lineTo(laserPuzzle.mirrors[1].x, laserPuzzle.mirrors[1].y);
+        c.lineTo(laserPuzzle.mirrors[2].x, laserPuzzle.mirrors[2].y);
+        c.lineTo(laserPuzzle.mirrors[3].x, laserPuzzle.mirrors[3].y);
+        c.lineTo(laserPuzzle.targetX, laserPuzzle.targetY);
         c.stroke();
+
         if (!laserPuzzle.solved) {
           laserPuzzle.solved = true;
           document.getElementById('laserStatus').textContent = 'CIRCUIT COMPLETE // RECEPTOR CHARGED';
@@ -1263,27 +1225,22 @@
           sfxPuzzle();
         }
       } else {
-        document.getElementById('laserStatus').textContent = `BEAM REACHES MIRROR ${firstMisalignedMirror + 1}/4 // ROTATE MIRROR ${firstMisalignedMirror + 1}`;
-        document.getElementById('laserStatus').className = 'text-amber-400';
-        document.getElementById('btnClaimEdge').setAttribute('disabled', 'disabled');
+        c.stroke();
       }
     }
 
     function handleLaserCanvasClick(e) {
-      if (laserPuzzle.solved) return;
-      const canvas = e.currentTarget;
       const rect = e.target.getBoundingClientRect();
-      const clickX = (e.clientX - rect.left) * canvas.width / rect.width;
-      const clickY = (e.clientY - rect.top) * canvas.height / rect.height;
+      const clickX = e.clientX - rect.left;
+      const clickY = e.clientY - rect.top;
 
-      for (const m of laserPuzzle.mirrors) {
+      laserPuzzle.mirrors.forEach(m => {
         if (Math.hypot(m.x - clickX, m.y - clickY) < 25) {
           m.angle = (m.angle + 45) % 360;
           playTone(520, 'sine', 0.08, 0.08);
           renderLaserPuzzle();
-          break;
         }
-      }
+      });
     }
 
     function claimEdgeComponent() {
@@ -1613,13 +1570,12 @@
 
     function respawnPlayer() {
       const p = state.player;
-      const checkpoint = state.respawnCheckpoint;
       state.isGameOver = false;
       document.getElementById('modalGameOver').classList.add('hidden');
       p.hp = p.maxHp;
       p.shield = p.maxShield;
-      p.x = checkpoint.x;
-      p.y = checkpoint.y;
+      p.x = 120;
+      p.y = 440;
       p.vx = 0;
       p.vy = 0;
       p.isGrounded = false;
@@ -1633,31 +1589,6 @@
       state.camera.y = p.y + p.height / 2 - height / 2;
       for (const key in keys) keys[key] = false;
       mouse.down = false;
-
-      // Reset an unfinished Sector 3 encounter so the Archon cannot chase the player
-      // all the way back to the checkpoint after repeated deaths.
-      if (state.currentLevel === 3 && !state.boss.defeated) {
-        const boss = state.boss;
-        boss.x = 1900;
-        boss.y = 440;
-        boss.vx = 0;
-        boss.vy = 0;
-        boss.armor = boss.maxArmor;
-        boss.hp = boss.maxHp;
-        boss.phase = state.craftingActive && state.craftingCountdown <= 0 ? 4 : 1;
-        boss.staggerTimer = 0;
-        boss.attackTimer = 0;
-        boss.active = false;
-
-        const bossHud = document.getElementById('bossHud');
-        bossHud.style.opacity = '0';
-        bossHud.classList.add('-translate-y-4');
-        document.getElementById('bossArmorBar').style.width = '100%';
-        document.getElementById('bossHpBar').style.width = '100%';
-        document.getElementById('bossHpText').textContent = '100%';
-        document.getElementById('bossPhaseBadge').textContent = boss.phase === 4 ? 'VOID ENRAGED' : 'PHASE 1';
-      }
-
       updateVitalsUI();
       showNotification("REBOOT COMPLETE — TEMPORARY SHIELD ACTIVE");
     }
@@ -1934,7 +1865,6 @@
 
       // Boss activation in Level 3
       if (state.currentLevel === 3 && p.x > 1500 && !state.boss.active && !state.boss.defeated) {
-        state.respawnCheckpoint = { x: 1400, y: 440 };
         state.boss.active = true;
         document.getElementById('bossHud').style.opacity = '1';
         document.getElementById('bossHud').classList.remove('-translate-y-4');
