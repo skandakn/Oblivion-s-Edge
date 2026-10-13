@@ -103,6 +103,9 @@
     <button onclick="toggleStorylineModal()" class="hud-panel hover:bg-purple-900/40 text-purple-300 border-purple-500/70 px-3 py-2 rounded-xl text-[10px] font-mono flex items-center gap-1.5 transition shadow-[0_0_12px_rgba(168,85,247,0.3)]">
       <span>📖</span><span class="font-bold">STORYLINE [H]</span>
     </button>
+    <button id="musicToggleBtn" onclick="toggleMusic()" class="hud-panel hover:bg-emerald-900/40 text-emerald-400 border-emerald-500/50 px-3 py-2 rounded-xl text-[10px] font-mono flex items-center gap-1.5 transition">
+      <span id="musicIcon">🎵</span><span id="musicText">MUSIC ON [M]</span>
+    </button>
     <button id="audioToggleBtn" onclick="toggleAudio()" class="hud-panel hover:bg-slate-800/50 text-cyan-400 px-3 py-2 rounded-xl text-[10px] font-mono flex items-center gap-1.5 transition">
       <span id="audioIcon">🔊</span><span id="audioText">SFX ON</span>
     </button>
@@ -359,7 +362,7 @@
           <strong class="text-cyan-300 font-orb tracking-wider">CONTROLS:</strong><br>
           • <strong>A/D or Arrows:</strong> Move Astronaut • <strong>Space/W:</strong> Jump • <strong>Shift:</strong> Phantom Dash<br>
           • <strong>Left Click:</strong> Aim & Fire • <strong>R:</strong> Reload • <strong>E:</strong> Interact<br>
-          • <strong>B:</strong> Shop • <strong>Q:</strong> EMP Shockwave • <strong>1-4:</strong> Switch Weapons
+          • <strong>B:</strong> Shop • <strong>Q:</strong> EMP Shockwave • <strong>M:</strong> Music • <strong>1-4:</strong> Switch Weapons
         </div>
         <div class="bg-slate-950/80 p-3 rounded-xl border border-slate-800/80">
           <strong class="text-amber-300 font-orb tracking-wider">PUZZLE LOCATIONS:</strong><br>
@@ -507,22 +510,134 @@
   resize();
 
   // =====================================================================
-  // WEB AUDIO SYNTHESIZER
+  // WEB AUDIO SYNTHESIZER & AMBIENT DRONE ENGINE
   // =====================================================================
   let audioEnabled = true;
+  let musicEnabled = true;
   const AudioContextClass = window.AudioContext || window.webkitAudioContext;
   let audioCtx = null;
+  let ambientMusic = {
+    active: false,
+    masterGain: null,
+    osc1: null,
+    osc2: null,
+    osc3: null,
+    filter: null,
+    lfo: null,
+    lfoGain: null
+  };
 
   function initAudio() {
     if (!audioCtx) audioCtx = new AudioContextClass();
     if (audioCtx.state === 'suspended') audioCtx.resume();
+    if (musicEnabled && !ambientMusic.active) initAmbientDrone();
   }
+
+  function initAmbientDrone() {
+    if (!audioEnabled || !musicEnabled) return;
+    if (!audioCtx) audioCtx = new AudioContextClass();
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    if (ambientMusic.active) return;
+    try {
+      const now = audioCtx.currentTime;
+      const masterGain = audioCtx.createGain();
+      masterGain.gain.setValueAtTime(0.0001, now);
+      masterGain.gain.exponentialRampToValueAtTime(0.065, now + 2.0);
+      masterGain.connect(audioCtx.destination);
+
+      const filter = audioCtx.createBiquadFilter();
+      filter.type = 'lowpass';
+      filter.frequency.setValueAtTime(135, now);
+      filter.Q.setValueAtTime(2.8, now);
+      filter.connect(masterGain);
+
+      // Low frequency LFO modulates resonance cutoff for dark breathing atmosphere
+      const lfo = audioCtx.createOscillator();
+      const lfoGain = audioCtx.createGain();
+      lfo.type = 'sine';
+      lfo.frequency.setValueAtTime(0.16, now);
+      lfoGain.gain.setValueAtTime(55, now);
+      lfo.connect(lfoGain);
+      lfoGain.connect(filter.frequency);
+      lfo.start();
+
+      // Deep sub-bass drones (55Hz root + 55.35Hz slow binaural beat)
+      const osc1 = audioCtx.createOscillator();
+      osc1.type = 'triangle';
+      osc1.frequency.setValueAtTime(55, now);
+      osc1.connect(filter);
+      osc1.start();
+
+      const osc2 = audioCtx.createOscillator();
+      osc2.type = 'sine';
+      osc2.frequency.setValueAtTime(55.35, now);
+      osc2.connect(filter);
+      osc2.start();
+
+      // Eerie overtone oscillator (164.8Hz E3 minor fifth)
+      const osc3 = audioCtx.createOscillator();
+      const gain3 = audioCtx.createGain();
+      osc3.type = 'sine';
+      osc3.frequency.setValueAtTime(164.8, now);
+      gain3.gain.setValueAtTime(0.22, now);
+      osc3.connect(gain3);
+      gain3.connect(filter);
+      osc3.start();
+
+      ambientMusic = { active: true, masterGain, osc1, osc2, osc3, filter, lfo, lfoGain };
+    } catch(e) {}
+  }
+
+  function stopAmbientDrone() {
+    if (!ambientMusic.active || !audioCtx) return;
+    try {
+      const now = audioCtx.currentTime;
+      ambientMusic.masterGain.gain.linearRampToValueAtTime(0.0001, now + 0.5);
+      setTimeout(() => {
+        try {
+          if (ambientMusic.osc1) ambientMusic.osc1.stop();
+          if (ambientMusic.osc2) ambientMusic.osc2.stop();
+          if (ambientMusic.osc3) ambientMusic.osc3.stop();
+          if (ambientMusic.lfo) ambientMusic.lfo.stop();
+        } catch(e) {}
+        ambientMusic.active = false;
+      }, 550);
+    } catch(e) {
+      ambientMusic.active = false;
+    }
+  }
+
   function toggleAudio() {
     audioEnabled = !audioEnabled;
     document.getElementById('audioIcon').textContent = audioEnabled ? '🔊' : '🔇';
     document.getElementById('audioText').textContent = audioEnabled ? 'SFX ON' : 'SFX MUTED';
-    if (audioEnabled) playTone(587, 'sine', 0.1, 0.08);
+    if (audioEnabled) {
+      playTone(587, 'sine', 0.1, 0.08);
+      if (musicEnabled) initAmbientDrone();
+    } else {
+      stopAmbientDrone();
+    }
   }
+
+  function toggleMusic() {
+    musicEnabled = !musicEnabled;
+    const btn = document.getElementById('musicToggleBtn');
+    const icon = document.getElementById('musicIcon');
+    const text = document.getElementById('musicText');
+    if (icon) icon.textContent = musicEnabled ? '🎵' : '🔇';
+    if (text) text.textContent = musicEnabled ? 'MUSIC ON [M]' : 'MUSIC MUTED [M]';
+    if (btn) {
+      btn.className = musicEnabled
+        ? 'hud-panel hover:bg-emerald-900/40 text-emerald-400 border-emerald-500/50 px-3 py-2 rounded-xl text-[10px] font-mono flex items-center gap-1.5 transition'
+        : 'hud-panel hover:bg-slate-800/50 text-slate-500 border-slate-800 px-3 py-2 rounded-xl text-[10px] font-mono flex items-center gap-1.5 transition';
+    }
+    if (musicEnabled && audioEnabled) {
+      initAmbientDrone();
+    } else {
+      stopAmbientDrone();
+    }
+  }
+
   function playTone(freq, type='sine', duration=0.1, gainVal=0.08) {
     if (!audioEnabled) return;
     initAudio();
@@ -536,6 +651,7 @@
       osc.start(); osc.stop(audioCtx.currentTime + duration);
     } catch(e) {}
   }
+
   function sfxShoot(idx) {
     if (!audioEnabled) return;
     if (idx===0) playTone(720,'square',0.06,0.06);
@@ -543,17 +659,103 @@
     else if (idx===2) playTone(1100,'triangle',0.22,0.14);
     else if (idx===3) playTone(220,'sine',0.3,0.2);
   }
+
   function sfxHit() { playTone(140,'sawtooth',0.08,0.08); }
   function sfxDash() { playTone(440,'sine',0.14,0.1); }
   function sfxPuzzle() { playTone(880,'sine',0.18,0.12); setTimeout(()=>playTone(1200,'sine',0.15,0.1),100); }
   function sfxAlarm() { playTone(400,'square',0.3,0.12); }
   function sfxCoin() { playTone(1046,'sine',0.05,0.08); setTimeout(()=>playTone(1318,'sine',0.08,0.09),40); }
+
+  function sfxCredit(val) {
+    if (!audioEnabled) return;
+    initAudio();
+    try {
+      const freqs = [880, 1174, 1480]; // A5, D6, F#6 bright resonant arpeggio
+      freqs.forEach((f, idx) => {
+        setTimeout(() => {
+          if (!audioEnabled || !audioCtx) return;
+          try {
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(f, audioCtx.currentTime);
+            osc.frequency.exponentialRampToValueAtTime(f * 1.04, audioCtx.currentTime + 0.12);
+            gain.gain.setValueAtTime(0.08, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.14);
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.start();
+            osc.stop(audioCtx.currentTime + 0.14);
+          } catch(e) {}
+        }, idx * 36);
+      });
+    } catch(e) {}
+  }
+
+  function sfxLand(vy) {
+    if (!audioEnabled) return;
+    initAudio();
+    try {
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      const filter = audioCtx.createBiquadFilter();
+      osc.type = 'triangle';
+      const startFreq = Math.min(180, 70 + (vy || 10) * 6);
+      osc.frequency.setValueAtTime(startFreq, audioCtx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(32, audioCtx.currentTime + 0.16);
+      filter.type = 'lowpass';
+      filter.frequency.setValueAtTime(260, audioCtx.currentTime);
+      gain.gain.setValueAtTime(0.18, audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.18);
+      osc.connect(filter);
+      filter.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.start();
+      osc.stop(audioCtx.currentTime + 0.18);
+      if (vy > 11) {
+        setTimeout(() => playTone(310, 'sine', 0.08, 0.05), 40);
+      }
+    } catch(e) {}
+  }
+
+  function sfxThruster() {
+    if (!audioEnabled) return;
+    initAudio();
+    try {
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      const filter = audioCtx.createBiquadFilter();
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(140, audioCtx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(440, audioCtx.currentTime + 0.18);
+      filter.type = 'bandpass';
+      filter.frequency.setValueAtTime(450, audioCtx.currentTime);
+      filter.Q.setValueAtTime(2.4, audioCtx.currentTime);
+      gain.gain.setValueAtTime(0.13, audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.2);
+      osc.connect(filter);
+      filter.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.start();
+      osc.stop(audioCtx.currentTime + 0.2);
+      playTone(740, 'triangle', 0.14, 0.06);
+    } catch(e) {}
+  }
+
   function sfxBuy() { playTone(659,'triangle',0.08,0.1); setTimeout(()=>playTone(987,'sine',0.15,0.12),60); }
   function sfxCrate() { playTone(180,'sawtooth',0.15,0.12); }
   function sfxEmp() { playTone(280,'sawtooth',0.45,0.2); }
   function sfxDrone() { playTone(900,'square',0.05,0.04); }
-  function sfxJetpack() { playTone(550,'sine',0.12,0.1); setTimeout(()=>playTone(820,'triangle',0.12,0.08),35); }
+  function sfxJetpack() { sfxThruster(); }
   function sfxLift() { playTone(320,'sine',0.1,0.15); setTimeout(()=>playTone(640,'sawtooth',0.2,0.12),40); setTimeout(()=>playTone(960,'triangle',0.25,0.1),80); }
+
+  function hexToRgba(hex, alpha = 1) {
+    if (!hex || hex.startsWith('rgb')) return hex;
+    let c = hex.replace('#', '');
+    if (c.length === 3) c = c.split('').map(x => x + x).join('');
+    const num = parseInt(c, 16);
+    return `rgba(${(num >> 16) & 255},${(num >> 8) & 255},${num & 255},${alpha})`;
+  }
 
   // =====================================================================
   // GLOBAL ANIMATION TICK (for puzzles and neon effects)
@@ -615,6 +817,7 @@
       { id:"ammo_crate",   name:"Full Munitions Supply",          desc:"Refills all weapon reserves to max",    price:40,  repeatable:true, type:"consumable"}
     ],
     buildings:[], platforms:[], interactables:[], pickups:[], crates:[], drones:[], bullets:[], particles:[],
+    muzzleFlashes:[], bulletTrails:[], hitStopFrames:0,
     boss:{ x:3400,y:430,vx:0,vy:0,w:90,h:90,armor:500,maxArmor:500,hp:800,maxHp:800,phase:1,staggerTimer:0,attackTimer:0,active:false,defeated:false },
     craftingCountdown:60, craftingActive:false
   };
@@ -625,6 +828,7 @@
   function initLevel(lvlNum) {
     state.currentLevel = lvlNum;
     state.bullets = []; state.particles = []; state.pickups = [];
+    state.muzzleFlashes = []; state.bulletTrails = []; state.hitStopFrames = 0;
     state.player.x = 120; state.player.y = 440;
     state.player.vx = 0; state.player.vy = 0;
     state.camera.x = 0; state.camera.y = 0;
@@ -878,7 +1082,7 @@
     state.credits += amount;
     document.getElementById('currencyCredits').textContent = `${state.credits} NC`;
     document.getElementById('shopBalance').textContent = `${state.credits}`;
-    sfxCoin();
+    sfxCredit(amount);
     if (x!==undefined && y!==undefined) spawnFloatingText(x, y-20, `+${amount} NC`, '#f59e0b');
   }
   function addScrap(amount, x, y) {
@@ -1015,7 +1219,7 @@
     } else if (p.jumpsLeft > 0) {
       p.vy = -p.jumpForce * 0.95;
       p.jumpsLeft--;
-      sfxJetpack();
+      sfxThruster();
       state.shake = 3;
       for (let k = 0; k < 14; k++) {
         state.particles.push({
@@ -1048,6 +1252,7 @@
     if (k==='2') selectWeapon(1);
     if (k==='3') selectWeapon(2);
     if (k==='4' && state.inventory.deathstorm) selectWeapon(3);
+    if (k==='m') toggleMusic();
     if (e.key==='Escape') closeModals();
   });
   window.addEventListener('keyup', e => { keys[e.key.toLowerCase()] = false; });
@@ -1884,7 +2089,26 @@
     const p=state.player;
     const originX=p.x+p.width/2, originY=p.y+p.height/2;
     const aimAngle=Math.atan2((mouse.y+state.camera.y)-originY,(mouse.x+state.camera.x)-originX);
-    state.shotsFired++; state.shake=w.melee?8:(state.curWeapIdx===2?6:2);
+    state.shotsFired++; state.shake=w.melee?8:(state.curWeapIdx===2?7:2.5);
+
+    // Dynamic Muzzle Flash with localized radial light ring
+    const barrelDist = w.melee ? 32 : 25;
+    const muzzleX = originX + Math.cos(aimAngle) * barrelDist;
+    const muzzleY = originY + Math.sin(aimAngle) * barrelDist;
+    state.muzzleFlashes.push({
+      x: muzzleX,
+      y: muzzleY,
+      playerX: originX,
+      playerY: originY,
+      angle: aimAngle,
+      weaponIdx: state.curWeapIdx,
+      color: w.color,
+      life: state.curWeapIdx === 2 ? 8 : (state.curWeapIdx === 1 ? 6 : 5),
+      maxLife: state.curWeapIdx === 2 ? 8 : (state.curWeapIdx === 1 ? 6 : 5),
+      radius: state.curWeapIdx === 2 ? 150 : (state.curWeapIdx === 1 ? 105 : (w.melee ? 120 : 80)),
+      intensity: state.curWeapIdx === 2 ? 1.0 : (state.curWeapIdx === 1 ? 0.85 : 0.72)
+    });
+
     if (w.melee) {
       state.particles.push({slash:true,x:originX+Math.cos(aimAngle)*35,y:originY+Math.sin(aimAngle)*35,angle:aimAngle,life:14});
       checkMeleeHit(originX,originY,aimAngle,w.damage);
@@ -1898,17 +2122,33 @@
     }
   }
 
+  function triggerHitStop(frames = 2) {
+    state.hitStopFrames = Math.max(state.hitStopFrames, frames);
+  }
+
   function checkMeleeHit(px,py,angle,dmg) {
     const hitDist=90;
+    let hitAny = false;
     state.drones.forEach(d=>{
-      if (Math.hypot(d.x-px,d.y-py)<hitDist) { d.hp-=dmg; state.totalDamageDealt+=dmg; state.shotsHit++; sfxHit(); spawnFloatingText(d.x,d.y-20,`${dmg} CLEAVE`,'#ec4899'); }
+      if (Math.hypot(d.x-px,d.y-py)<hitDist) {
+        d.hp-=dmg; state.totalDamageDealt+=dmg; state.shotsHit++; sfxHit();
+        spawnFloatingText(d.x,d.y-20,`${dmg} CLEAVE`,'#ec4899');
+        hitAny = true;
+      }
     });
     const b=state.boss;
     if (b.active&&!b.defeated&&Math.hypot(b.x-px,b.y-py)<hitDist+b.w/2) {
-      if (b.armor>0) { b.armor-=dmg*1.5; spawnFloatingText(b.x,b.y-30,`${dmg} SUNDER`,'#f59e0b'); }
-      else { b.hp-=dmg*2; spawnFloatingText(b.x,b.y-30,`${dmg*2} CRIT`,'#ec4899'); }
+      hitAny = true;
+      if (b.armor>0) {
+        b.armor-=dmg*1.5;
+        spawnFloatingText(b.x,b.y-30,`${Math.round(dmg*1.5)} SUNDER`,'#f59e0b');
+      } else {
+        b.hp-=dmg*2;
+        spawnFloatingText(b.x,b.y-30,`${dmg*2} CRIT`,'#ec4899');
+      }
       if (b.hp<=0) defeatBoss();
     }
+    if (hitAny) triggerHitStop(2);
   }
 
   function spawnFloatingText(x,y,text,color='#fff') { state.particles.push({text,color,x,y,vy:-1.2,life:45}); }
@@ -1956,10 +2196,28 @@
   // PHYSICS & SIMULATION — with wall collision fix for dash
   // =====================================================================
   function updatePhysics() {
+    if (state.hitStopFrames > 0) {
+      state.hitStopFrames--;
+      return; // Freeze camera and physics for 2-frame impact frame feel
+    }
     const p=state.player;
     gameTick++;
     if (state.shake>0) state.shake*=0.88;
     if (state.shake<0.15) state.shake=0;
+
+    // Update muzzle flashes
+    for (let i = state.muzzleFlashes.length - 1; i >= 0; i--) {
+      const mf = state.muzzleFlashes[i];
+      mf.life--;
+      if (mf.life <= 0) state.muzzleFlashes.splice(i, 1);
+    }
+
+    // Update bullet trails
+    for (let i = state.bulletTrails.length - 1; i >= 0; i--) {
+      const tr = state.bulletTrails[i];
+      tr.alpha -= tr.decay;
+      if (tr.alpha <= 0) state.bulletTrails.splice(i, 1);
+    }
 
     // Dash booster cooldown
     if (p.dashCooldown>0) {
@@ -2015,6 +2273,7 @@
 
     // Y collision with platforms (one-way pass-through & landing)
     const prevY = p.y;
+    const prevVy = p.vy;
     p.y+=p.vy; p.isGrounded=false;
     const isHoldingDown = keys['s'] || keys['arrowdown'];
 
@@ -2026,6 +2285,13 @@
             p.vy = 0;
             p.isGrounded = true;
             p.jumpsLeft = p.maxJumps;
+            if (prevVy > 7) {
+              sfxLand(prevVy);
+              if (prevVy > 11) {
+                state.shake = Math.min(4, state.shake + 2.5);
+                for (let k = 0; k < 8; k++) state.particles.push({x:p.x+p.width/2+(Math.random()-.5)*16,y:p.y+p.height,vx:(Math.random()-.5)*4,vy:-Math.random()*2,r:2,color:'#64748b',life:14});
+              }
+            }
           }
         }
       } else {
@@ -2035,6 +2301,13 @@
             p.vy=0;
             p.isGrounded=true;
             p.jumpsLeft=p.maxJumps;
+            if (prevVy > 7) {
+              sfxLand(prevVy);
+              if (prevVy > 11) {
+                state.shake = Math.min(4, state.shake + 2.5);
+                for (let k = 0; k < 8; k++) state.particles.push({x:p.x+p.width/2+(Math.random()-.5)*16,y:p.y+p.height,vx:(Math.random()-.5)*4,vy:-Math.random()*2,r:2,color:'#64748b',life:14});
+              }
+            }
           } else if (p.vy<0) {
             p.y=plat.y+plat.h;
             p.vy=0;
@@ -2099,22 +2372,58 @@
     // Bullets
     for(let i=state.bullets.length-1;i>=0;i--){
       const b=state.bullets[i];
+      const prevBx = b.x;
+      const prevBy = b.y;
       b.x+=b.vx; b.y+=b.vy; b.life--;
+
+      // Projectile bullet trails with lingering fading alpha lines
+      if (!b.isEnemy) {
+        const isRail = !!b.piercing;
+        const isScatter = b.life <= 60 && !b.piercing && b.damage < 20;
+        state.bulletTrails.push({
+          x1: prevBx,
+          y1: prevBy,
+          x2: b.x,
+          y2: b.y,
+          color: b.color,
+          alpha: isRail ? 0.95 : (isScatter ? 0.75 : 0.85),
+          decay: isRail ? 0.045 : (isScatter ? 0.09 : 0.065),
+          width: isRail ? 4.5 : (isScatter ? 2.5 : 3.0),
+          piercing: isRail
+        });
+      }
+
       for(const plat of state.platforms){ if(b.x>plat.x&&b.x<plat.x+plat.w&&b.y>plat.y&&b.y<plat.y+plat.h){b.life=0;break;} }
       for(const c of state.crates){ if(!c.opened&&b.x>c.x&&b.x<c.x+c.w&&b.y>c.y&&b.y<c.y+c.h){c.hp-=b.damage;b.life=0;if(c.hp<=0)breakCrate(c);break;} }
       if (!b.isEnemy) {
         for(const d of state.drones){
           if(Math.hypot(d.x-b.x,d.y-b.y)<d.r+5){
             d.hp-=b.damage; state.totalDamageDealt+=b.damage; state.shotsHit++; sfxHit();
-            spawnFloatingText(d.x,d.y-20,`${b.damage}`,b.color);
+            const isCrit = b.piercing || d.hp <= 0 || d.isMiniBoss;
+            spawnFloatingText(d.x,d.y-20,`${b.damage}${isCrit?' CRIT':''}`,isCrit?'#f43f5e':b.color);
+            if (isCrit) triggerHitStop(2);
             if(!b.piercing)b.life=0; break;
           }
         }
         const boss=state.boss;
         if(boss.active&&!boss.defeated&&Math.hypot(boss.x-b.x,boss.y-b.y)<boss.w/2){
           state.totalDamageDealt+=b.damage; state.shotsHit++; sfxHit();
-          if(boss.armor>0){boss.armor-=b.damage;spawnFloatingText(boss.x,boss.y-30,`${b.damage}`,'#f59e0b');if(boss.armor<=0){boss.phase=3;showNotification("💥 XENARCH CHITIN ARMOR SHATTERED! CORE EXPOSED!");}}
-          else{boss.hp-=b.damage;spawnFloatingText(boss.x,boss.y-30,`${b.damage}`,'#f87171');if(boss.hp<=0)defeatBoss();}
+          const isCrit = b.piercing || boss.armor <= 0;
+          if (isCrit) triggerHitStop(2);
+          if(boss.armor>0){
+            boss.armor-=b.damage;
+            spawnFloatingText(boss.x,boss.y-30,`${b.damage}`,'#f59e0b');
+            if(boss.armor<=0){
+              boss.phase=3;
+              triggerHitStop(3);
+              showNotification("💥 XENARCH CHITIN ARMOR SHATTERED! CORE EXPOSED!");
+            }
+          }
+          else{
+            boss.hp-=b.damage;
+            spawnFloatingText(boss.x,boss.y-30,`${b.damage} CRIT`,'#f87171');
+            if(boss.hp<=0)defeatBoss();
+          }
           if(!b.piercing)b.life=0;
         }
       } else {
@@ -2691,16 +3000,92 @@
 
     ctx.restore();
 
-    // ── 11. BULLETS ──────────────────────────────────────────────────
+    // ── 10b. DYNAMIC MUZZLE FLASHES & LOCALIZED RADIAL LIGHT RINGS ────
+    for (const mf of state.muzzleFlashes) {
+      const progress = 1 - (mf.life / mf.maxLife);
+      const curRadius = mf.radius * (0.35 + 0.65 * progress);
+      const alpha = (mf.life / mf.maxLife) * mf.intensity;
+      const mx = mf.x - camX, my = mf.y - camY;
+
+      ctx.save();
+      // 1. Radial ambient light ring cast on player and surroundings
+      const grad = ctx.createRadialGradient(mx, my, 4, mx, my, curRadius);
+      grad.addColorStop(0, hexToRgba(mf.color, alpha * 0.75));
+      grad.addColorStop(0.35, hexToRgba(mf.color, alpha * 0.35));
+      grad.addColorStop(0.7, hexToRgba(mf.color, alpha * 0.12));
+      grad.addColorStop(1, hexToRgba(mf.color, 0));
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      ctx.arc(mx, my, curRadius, 0, Math.PI * 2);
+      ctx.fill();
+
+      // 2. Expanding crisp shockwave / light ring
+      ctx.strokeStyle = hexToRgba(mf.color, alpha * 0.9);
+      ctx.lineWidth = Math.max(1.2, 3.5 * (mf.life / mf.maxLife));
+      ctx.shadowColor = mf.color;
+      ctx.shadowBlur = 14;
+      ctx.beginPath();
+      ctx.arc(mx, my, curRadius * 0.82, 0, Math.PI * 2);
+      ctx.stroke();
+
+      // 3. Sharp directional muzzle spark burst cone
+      ctx.fillStyle = '#ffffff';
+      ctx.shadowColor = mf.color;
+      ctx.shadowBlur = 18;
+      ctx.beginPath();
+      ctx.moveTo(mx, my);
+      ctx.lineTo(mx + Math.cos(mf.angle - 0.38) * (curRadius * 0.45), my + Math.sin(mf.angle - 0.38) * (curRadius * 0.45));
+      ctx.lineTo(mx + Math.cos(mf.angle) * (curRadius * 0.68), my + Math.sin(mf.angle) * (curRadius * 0.68));
+      ctx.lineTo(mx + Math.cos(mf.angle + 0.38) * (curRadius * 0.45), my + Math.sin(mf.angle + 0.38) * (curRadius * 0.45));
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
+    }
+
+    // ── 11. BULLETS & LINGERING TRAILS ────────────────────────────────
+    // Lingering fading alpha bullet trails
+    for (const tr of state.bulletTrails) {
+      const tX1 = tr.x1 - camX, tY1 = tr.y1 - camY;
+      const tX2 = tr.x2 - camX, tY2 = tr.y2 - camY;
+      ctx.save();
+      ctx.globalAlpha = Math.max(0, tr.alpha);
+      ctx.strokeStyle = tr.color;
+      ctx.lineWidth = tr.width * (0.35 + 0.65 * tr.alpha);
+      ctx.lineCap = 'round';
+      ctx.shadowColor = tr.color;
+      ctx.shadowBlur = tr.piercing ? 14 : 7;
+      ctx.beginPath();
+      ctx.moveTo(tX1, tY1);
+      ctx.lineTo(tX2, tY2);
+      ctx.stroke();
+
+      // Secondary white core for railgun hyper-beam
+      if (tr.piercing && tr.alpha > 0.25) {
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = tr.width * 0.38 * tr.alpha;
+        ctx.beginPath();
+        ctx.moveTo(tX1, tY1);
+        ctx.lineTo(tX2, tY2);
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
+
+    // Active Bullets
     for(const bullet of state.bullets){
       const bx2=bullet.x-camX, by2=bullet.y-camY;
       ctx.shadowColor=bullet.color; ctx.shadowBlur=bullet.isEnemy?8:12;
       ctx.fillStyle=bullet.color;
       ctx.beginPath(); ctx.arc(bx2,by2,bullet.isEnemy?3.5:4.5,0,Math.PI*2); ctx.fill();
-      // Trail
-      ctx.strokeStyle=bullet.color+'66'; ctx.lineWidth=2;
-      ctx.beginPath(); ctx.moveTo(bx2,by2); ctx.lineTo(bx2-bullet.vx*2,by2-bullet.vy*2); ctx.stroke();
       ctx.shadowBlur=0;
+    }
+
+    // Hit-stop impact flash overlay
+    if (state.hitStopFrames > 0) {
+      ctx.save();
+      ctx.fillStyle = 'rgba(255,255,255,0.06)';
+      ctx.fillRect(0, 0, width, height);
+      ctx.restore();
     }
 
     // ── 12. PARTICLES & FLOATING TEXT ────────────────────────────────
