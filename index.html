@@ -103,7 +103,7 @@
       <span>📖</span><span class="font-bold">STORYLINE [H]</span>
     </button>
     <button id="audioToggleBtn" onclick="toggleAudio()" class="hud-panel hover:bg-slate-800/50 text-cyan-400 px-3 py-2 rounded-xl text-[10px] font-mono flex items-center gap-1.5 transition">
-      <span id="audioIcon">🔊</span><span id="audioText">SFX ON</span>
+      <span id="audioIcon">🔊</span><span id="audioText">AUDIO ON</span>
     </button>
     <button onclick="toggleHelpModal()" class="hud-panel hover:bg-slate-800/50 text-slate-300 px-3 py-2 rounded-xl text-[10px] font-mono transition">? GUIDE</button>
   </div>
@@ -511,24 +511,34 @@
   let audioEnabled = true;
   const AudioContextClass = window.AudioContext || window.webkitAudioContext;
   let audioCtx = null;
-
   let musicStarted = false;
+  let musicMaster = null;
+  let musicTimer = null;
+  let musicStep = 0;
+  let noiseBuffer = null;
+  let lastDamageSoundAt = 0;
+  let musicVoices = [];
+
   function initAudio() {
+    if (!AudioContextClass) return;
     if (!audioCtx) audioCtx = new AudioContextClass();
-    if (audioCtx.state === 'suspended') audioCtx.resume();
-    if (!musicStarted && audioEnabled) {
-      musicStarted = true;
-      startMusic(state.currentLevel);
+    const startIfNeeded = () => {
+      if (audioEnabled && !musicStarted) startMusic(state.currentLevel);
+    };
+    if (audioCtx.state === 'suspended') {
+      audioCtx.resume().then(startIfNeeded).catch(() => {});
+    } else {
+      startIfNeeded();
     }
   }
   function toggleAudio() {
     audioEnabled = !audioEnabled;
     document.getElementById('audioIcon').textContent = audioEnabled ? '🔊' : '🔇';
-    document.getElementById('audioText').textContent = audioEnabled ? 'SFX ON' : 'SFX MUTED';
+    document.getElementById('audioText').textContent = audioEnabled ? 'AUDIO ON' : 'AUDIO MUTED';
     if (audioEnabled) {
-      musicStarted = true;
+      musicStarted = false;
+      initAudio();
       playTone(587, 'sine', 0.1, 0.08);
-      startMusic(state.currentLevel);
     } else {
       stopMusic();
     }
@@ -536,6 +546,7 @@
   function playTone(freq, type='sine', duration=0.1, gainVal=0.08) {
     if (!audioEnabled) return;
     initAudio();
+    if (!audioCtx) return;
     try {
       const osc = audioCtx.createOscillator();
       const gain = audioCtx.createGain();
@@ -546,14 +557,140 @@
       osc.start(); osc.stop(audioCtx.currentTime + duration);
     } catch(e) {}
   }
+  function playNoiseBurst(duration, gainVal, cutoff, type='lowpass') {
+    if (!audioEnabled) return;
+    initAudio();
+    if (!audioCtx) return;
+    try {
+      if (!noiseBuffer) {
+        const length = Math.floor(audioCtx.sampleRate * 0.5);
+        noiseBuffer = audioCtx.createBuffer(1, length, audioCtx.sampleRate);
+        const samples = noiseBuffer.getChannelData(0);
+        for (let i = 0; i < length; i++) samples[i] = Math.random() * 2 - 1;
+      }
+      const source = audioCtx.createBufferSource();
+      const filter = audioCtx.createBiquadFilter();
+      const gain = audioCtx.createGain();
+      const now = audioCtx.currentTime;
+      source.buffer = noiseBuffer;
+      filter.type = type;
+      filter.frequency.setValueAtTime(cutoff, now);
+      gain.gain.setValueAtTime(Math.max(0.0001, gainVal), now);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
+      source.connect(filter); filter.connect(gain); gain.connect(audioCtx.destination);
+      source.start(now); source.stop(now + duration);
+    } catch(e) {}
+  }
+  function playMusicNote(freq, when, duration, gainVal, type='triangle') {
+    if (!audioCtx || !musicMaster) return;
+    const osc = audioCtx.createOscillator();
+    const filter = audioCtx.createBiquadFilter();
+    const gain = audioCtx.createGain();
+    osc.type = type;
+    osc.frequency.setValueAtTime(freq, when);
+    filter.type = 'lowpass';
+    filter.frequency.setValueAtTime(type === 'sawtooth' ? 900 : 1500, when);
+    gain.gain.setValueAtTime(0.0001, when);
+    gain.gain.linearRampToValueAtTime(gainVal, when + 0.025);
+    gain.gain.exponentialRampToValueAtTime(0.0001, when + duration);
+    osc.connect(filter); filter.connect(gain); gain.connect(musicMaster);
+    osc.onended = () => { osc.disconnect(); filter.disconnect(); gain.disconnect(); };
+    osc.start(when); osc.stop(when + duration + 0.02);
+  }
+  function stopMusic() {
+    if (musicTimer) clearInterval(musicTimer);
+    musicTimer = null;
+    musicStarted = false;
+    if (musicMaster && audioCtx) {
+      const oldMaster = musicMaster;
+      const now = audioCtx.currentTime;
+      oldMaster.gain.cancelScheduledValues(now);
+      oldMaster.gain.setTargetAtTime(0.0001, now, 0.08);
+      musicVoices.forEach((voice) => { try { voice.stop(now + 0.25); } catch(e) {} });
+      musicVoices = [];
+      setTimeout(() => oldMaster.disconnect(), 500);
+      musicMaster = null;
+    }
+  }
+  function startMusic(level=1) {
+    if (!audioEnabled || !audioCtx || audioCtx.state !== 'running') return;
+    stopMusic();
+    const now = audioCtx.currentTime;
+    musicMaster = audioCtx.createGain();
+    musicMaster.gain.setValueAtTime(0.0001, now);
+    musicMaster.gain.linearRampToValueAtTime(0.48, now + 1.8);
+    musicMaster.connect(audioCtx.destination);
+    musicStarted = true;
+    musicStep = 0;
+
+    // Layered low drones keep a tense, cinematic bed under the combat.
+    const roots = [55, 49, 65.41];
+    const root = roots[Math.max(0, Math.min(2, level - 1))];
+    [
+      { frequency: root, type: 'sine', volume: 0.14 },
+      { frequency: root * 1.505, type: 'triangle', volume: 0.055 },
+      { frequency: root * 2.01, type: 'sawtooth', volume: 0.018 }
+    ].forEach((voice) => {
+      const osc = audioCtx.createOscillator();
+      const filter = audioCtx.createBiquadFilter();
+      const gain = audioCtx.createGain();
+      osc.type = voice.type;
+      osc.frequency.setValueAtTime(voice.frequency, now);
+      filter.type = 'lowpass';
+      filter.frequency.setValueAtTime(voice.type === 'sawtooth' ? 260 : 480, now);
+      gain.gain.setValueAtTime(voice.volume, now);
+      osc.connect(filter); filter.connect(gain); gain.connect(musicMaster);
+      osc.start(now);
+      musicVoices.push(osc);
+    });
+
+    const scale = [1, 1.189, 1.335, 1.498, 1.782, 2, 2.378, 2.67];
+    const beat = () => {
+      if (!musicMaster || !audioEnabled || audioCtx.state !== 'running') return;
+      const time = audioCtx.currentTime + 0.025;
+      const step = musicStep++;
+      if (step % 4 === 0) playMusicNote(root * (step % 8 === 0 ? 2 : 1), time, 0.38, 0.09, 'sawtooth');
+      if (step % 2 === 1 || step % 8 === 6) {
+        const index = (step * 3 + Math.floor(step / 8)) % scale.length;
+        playMusicNote(root * 4 * scale[index], time, 0.2, 0.035, 'triangle');
+      }
+      if (step % 16 === 12) playMusicNote(root * 3 * scale[2], time, 0.55, 0.04, 'sine');
+    };
+    beat();
+    musicTimer = setInterval(beat, 280);
+  }
   function sfxShoot(idx) {
     if (!audioEnabled) return;
-    if (idx===0) playTone(720,'square',0.06,0.06);
-    else if (idx===1) playTone(340,'sawtooth',0.12,0.1);
-    else if (idx===2) playTone(1100,'triangle',0.22,0.14);
-    else if (idx===3) playTone(220,'sine',0.3,0.2);
+    const shots = [
+      { start: 210, end: 70, duration: 0.09, noise: 0.14, cutoff: 1900, type: 'lowpass' },
+      { start: 150, end: 48, duration: 0.16, noise: 0.22, cutoff: 1100, type: 'lowpass' },
+      { start: 1200, end: 95, duration: 0.28, noise: 0.2, cutoff: 3000, type: 'lowpass' },
+      { start: 300, end: 55, duration: 0.24, noise: 0.16, cutoff: 900, type: 'bandpass' }
+    ];
+    const shot = shots[idx] || shots[0];
+    initAudio();
+    if (!audioCtx) return;
+    const now = audioCtx.currentTime;
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.type = idx === 2 ? 'triangle' : 'sawtooth';
+    osc.frequency.setValueAtTime(shot.start, now);
+    osc.frequency.exponentialRampToValueAtTime(shot.end, now + shot.duration);
+    gain.gain.setValueAtTime(idx === 2 ? 0.12 : 0.09, now);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + shot.duration);
+    osc.connect(gain); gain.connect(audioCtx.destination);
+    osc.start(now); osc.stop(now + shot.duration);
+    playNoiseBurst(shot.duration, shot.noise, shot.cutoff, shot.type);
   }
   function sfxHit() { playTone(140,'sawtooth',0.08,0.08); }
+  function sfxPlayerDamage() {
+    const now = performance.now();
+    if (now - lastDamageSoundAt < 220) return;
+    lastDamageSoundAt = now;
+    playNoiseBurst(0.2, 0.24, 700, 'lowpass');
+    playTone(105, 'sawtooth', 0.22, 0.13);
+    setTimeout(() => playTone(58, 'triangle', 0.2, 0.1), 45);
+  }
   function sfxDash() { playTone(440,'sine',0.14,0.1); }
   function sfxPuzzle() { playTone(880,'sine',0.18,0.12); setTimeout(()=>playTone(1200,'sine',0.15,0.1),100); }
   function sfxAlarm() { playTone(400,'square',0.3,0.12); }
@@ -663,7 +800,7 @@
         { x:0,   y:0,   w:2900, h:40, solid:true },   // ceiling
         { x:-40, y:0,   w:40,   h:600, solid:true },  // left wall
         { x:2860,y:0,   w:40,   h:600, solid:true },  // right wall
-        // Armory roof and satellite tower (oneWay: true so jumping through from below works smoothly!)
+        // Rooftops remain drop-through platforms, but block jumps from below.
         { x:480, y:220, w:460,  h:20, oneWay:true },   // Armory roof
         { x:900, y:180, w:360,  h:20, oneWay:true },   // Satellite tower roof
         // Stepping catwalks (ladders / stairs)
@@ -1918,6 +2055,7 @@
     w.lastFired=now;
     if (!w.melee) w.clip--;
     updateArsenalUI(); sfxShoot(state.curWeapIdx);
+    if (!w.melee && w.clip === 0 && w.reserve > 0) setTimeout(reloadWeapon, 0);
     const p=state.player;
     const originX=p.x+p.width/2, originY=p.y+p.height/2;
     const aimAngle=Math.atan2((mouse.y+state.camera.y)-originY,(mouse.x+state.camera.x)-originX);
@@ -2078,6 +2216,12 @@
             p.vy = 0;
             p.isGrounded = true;
             p.jumpsLeft = p.maxJumps;
+          }
+        } else if (p.vy < 0 && prevY >= plat.y + plat.h && p.y <= plat.y + plat.h) {
+          // Stop upward movement at the underside so jumps cannot pass through barriers.
+          if (p.x + p.width > plat.x + 2 && p.x < plat.x + plat.w - 2) {
+            p.y = plat.y + plat.h;
+            p.vy = 0;
           }
         }
       } else {
@@ -2311,7 +2455,7 @@
     if (p.isDashing) return;
     if (p.shield>0){p.shield-=amount;if(p.shield<0){p.hp+=p.shield;p.shield=0;}}
     else p.hp-=amount;
-    sfxHit(); state.shake=10; updateVitalsUI();
+    sfxPlayerDamage(); state.shake=10; updateVitalsUI();
     if (p.hp<=0) document.getElementById('modalGameOver').classList.remove('hidden');
   }
 
