@@ -94,7 +94,6 @@
     <div class="flex items-center gap-1.5">
       <button onclick="toggleShop()" class="btn-hud btn-cyan px-3 py-1.5 rounded-xl flex items-center gap-1.5">🛒 SHOP [B]</button>
       <button onclick="activateEmp()" id="empBtn" class="btn-hud px-3 py-1.5 rounded-xl border border-purple-500/50 text-purple-300 bg-purple-950/20 hover:bg-purple-950/40 flex items-center gap-1.5">⚡ EMP [Q] (<span id="empCount">1</span>)</button>
-      <button onclick="addCheatCredits()" class="btn-hud px-2.5 py-1.5 rounded-xl border border-amber-600/50 text-amber-300 bg-amber-950/20 hover:bg-amber-950/40 text-[9px]">+500 NC [K]</button>
     </div>
   </div>
 
@@ -912,7 +911,6 @@
     document.getElementById('currencyScrap').textContent = `${state.scrap} SP`;
     if (x!==undefined && y!==undefined) spawnFloatingText(x, y-35, `+${amount} SP`, '#38bdf8');
   }
-  function addCheatCredits() { addCredits(500); showNotification("🪙 HACKATHON GRANT: +500 NC ADDED!"); }
   function spawnLootDrop(x, y, count=3) {
     for (let i=0; i<count; i++) {
       state.pickups.push({
@@ -1083,7 +1081,6 @@
     if (k==='r') reloadWeapon();
     if (k==='b') toggleShop();
     if (k==='q') activateEmp();
-    if (k==='k') addCheatCredits();
     if (k==='1') selectWeapon(0);
     if (k==='2') selectWeapon(1);
     if (k==='3') selectWeapon(2);
